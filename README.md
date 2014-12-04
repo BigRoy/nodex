@@ -1,6 +1,4 @@
-================================
-    Node Expression for maya.
-================================
+# Node Expression for maya.
 
 This class defines a simple wrapping functionality to create and manage mathematical
 node connections in Maya through scripting. The ease of access and method of using this
@@ -32,9 +30,10 @@ single important output. This way the algorithm can be written as a single line 
 Yet there's no boundary on what arguments one of the Nodex' staticmethods have so those could also
 include easing the workflow for much more complex operations than those already provided.
 
-----------------------------------------------------------------------------------------
-    Returns the smallest calculated resulting attribute (3-Vector > 2-Vector > Scalar)
-----------------------------------------------------------------------------------------
+## Features
+
+###    Returns the smallest calculated resulting attribute (3-Vector > 2-Vector > Scalar)
+
 The Nodex will try to minimize the result/output based on the inputs. This means that when
 you add two integers it will give you the output attribute (as Nodex) for a single float
 attribute (output1D). But if you add two vectors together it will return the output3D from the
@@ -43,9 +42,9 @@ used plusMinusAverage node.
 Note: This is of course only a valid statement for where this conversion is possible with the given
       Maya graph nodes.
 
-----------------------------------------------------------------------
-    Smart set/connect for attributes
-----------------------------------------------------------------------
+
+###    Smart set/connect for attributes
+
 Using an input value or attribute it will try to guess how to connect it to the input attributes
 for a mathemical node based on the smaller input element (in dimensions) similar to above.
 This means adding together a float attribute with a vector attribute will actually result in
@@ -60,9 +59,8 @@ to the type of output attribute that you're trying to connect to if directly con
 its staticmethods. An **EXCEPTION** is the Nodex().connectTo() method will try to adapt when possible!
 
 
-====================
-    Code Samples
-====================
+#    Code Samples
+
 Examples:
     # 1. Multiply two attributes and connect the output value
     >> mult = Nodex("pSphere1.translateX") * Nodex("pSphere1.translateY")
