@@ -1,25 +1,31 @@
-# Node Expression for maya.
+# Nodex
 
-This class defines a simple wrapping functionality to create and manage mathematical
-node connections in Maya through scripting. The ease of access and method of using this
+This package defines a wrapping functionality to create and manage mathematical
+node connections in Maya through Python scripting. The ease of access and method of using this
 will help to write readable and maintainable code for node based graphs that require
 a lot of mathematical processing.
 
+## Node expressions for Maya
+
 The process works by using an object called the ``Nodex``.
 
-Upon initializing a Nodex you reference a value, which is either a real value (numerical)
-or an attribute. Then you can perform mathematical operations upon this Nnodex with another
+Upon initializing a Nodex you reference a value, which is one of three values:
+
+1. Operates on output *attributes* so it can quickly connect it to another Nodex, `(pymel.Attribute)`
+2. Or references a *value* so that it can easily assign it into another Nodex. `(float, int, bool)`
+3. Or references an array of *values* and/or *attributes*. `(tuple)`
+
+Then you can perform mathematical operations upon this Nodex with another
 Nodex (thus other attributes/numbers) and it will automatically return a Nodex that references
 the output attribute resulting from the created node graph.
 
-Basically it either:
-    1) Operates on output attributes so it can quickly connect it to another Nodex
-    2) Or references a value so that it can easily assign it into another Nodex.
+Performable operations include mathematical operators that act directly on the Nodex instance, like:
 
-Performable operations include mathematical operators like: +, -, /, *, ^ for addition,
-subtraction, division, multiplication and power. Then there are comparison operators like
-==, !=, >, >=, <, <= that will result in a 'condition' node. All overridden operator functionality
-of the Nodex can also be peformed with its staticmethods, and more. Those other operations include:
+- +, -, /, *, ^ for addition, subtraction, division, multiplication and power.
+- ==, !=, >, >=, <, <= that will result in a 'condition' node.
+
+All overridden operator functionality of the Nodex can also be peformed with its staticmethods. But there are also more
+convenient operations accessible through it's staticmethods like:
 - average (plusMinusAverage)
 - clamp (clamp)
 - angleBetween (angleBetween)
@@ -32,7 +38,7 @@ include easing the workflow for much more complex operations than those already 
 
 ## Features
 
-###    Returns the smallest calculated resulting attribute (3-Vector > 2-Vector > Scalar)
+#### Returns the smallest calculated resulting attribute (3-Vector > 2-Vector > Scalar)
 
 The Nodex will try to minimize the result/output based on the inputs. This means that when
 you add two integers it will give you the output attribute (as Nodex) for a single float
@@ -43,7 +49,7 @@ Note: This is of course only a valid statement for where this conversion is poss
       Maya graph nodes.
 
 
-###    Smart set/connect for attributes
+#### Smart set/connect for attributes
 
 Using an input value or attribute it will try to guess how to connect it to the input attributes
 for a mathemical node based on the smaller input element (in dimensions) similar to above.
@@ -59,22 +65,58 @@ to the type of output attribute that you're trying to connect to if directly con
 its staticmethods. An **EXCEPTION** is the Nodex().connectTo() method will try to adapt when possible!
 
 
-#    Code Samples
+#### Chain, chainery, chain-chain-cheroo
 
-Examples:
-    # 1. Multiply two attributes and connect the output value
-    >> mult = Nodex("pSphere1.translateX") * Nodex("pSphere1.translateY")
-    >> mult.connectTo( Nodex("pSphere1.translateZ") )
+Since the output of each calculation with Nodex instances returns a new Nodex wrapping the calculation's output
+attribute you can write a chain of calculations. Of course you're free to stop take the resulting node midway, store
+it in a variable and use it's output for a multitude of node trees.
 
-    # 2. Add together multiple attributes (sum more than two values) and connect the result
-    >> result = Nodex.sum("pSphere1.translateX", "pSphere1.translateY", "pSphere1.translateZ", 1.0)
-    >> result.connectTo( Nodex("pSphere1.scaleX") )
+##    Code Samples
 
-    # 3. Clamp an attribute and connect it
-    >> Nodex.clamp("pSphere1.translateX", min=0, max=1, output="pSphere1.translateY")
+Multiply two attributes and connect the output value
+```python
+mult = Nodex("pSphere1.translateX") * Nodex("pSphere1.translateY")
+mult.connectTo( Nodex("pSphere1.translateZ") )
+```
 
-    # 4. Complex operations become a bit more readable
-    >> (Nodex("pSphere.translateX") * 2) + 0.5
+---
 
-    # 5. Or using your multiplyDivide now quickly in a multitiude of ways
-    >> Nodex([1, 0, "pSphere.translateX"]) * 3
+Add together multiple attributes (sum more than two values) and connect the result
+```python
+result = Nodex.sum("pSphere1.translateX", "pSphere1.translateY", "pSphere1.translateZ", 1.0)
+result.connectTo( Nodex("pSphere1.scaleX") )
+```
+
+---
+
+Clamp an attribute and connect it
+```python
+Nodex.clamp("pSphere1.translateX", min=0, max=1, output="pSphere1.translateY")
+```
+
+---
+
+Complex operations become a bit more readable
+```python
+(Nodex("pSphere.translateX") * 2) + 0.5
+```
+
+---
+
+Using the Nodex's mixed array instantiation
+```python
+nodex = Nodex([1, 0, "pSphere1.translateX"]) * 3
+print nodex.value()
+```
+
+This will print `[3, 0, 15]` if *pSphere1.translateX* is a value of 5.
+
+---
+
+Or perform a calculation through Maya nodes and clean up the Nodex tree afterwards
+```python
+# Note that currently this context manager is not included in the Nodex module but should be trivial to implement
+with MayaDeleteNewNodes():
+    nodex = (Nodex("1") + Nodex("pSphere1.translateX")) / Nodex("pSphere2.translateY")
+    value = nodex.value()
+```
