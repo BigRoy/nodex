@@ -115,7 +115,7 @@ This will print `[3, 0, 15]` if *pSphere1.translateX* is a value of 5.
 
 Or perform a calculation through Maya nodes and clean up the Nodex tree afterwards
 ```python
-# Note that currently this context manager is not included in the Nodex module but should be trivial to implement
+# The *MayaDeleteNewNodes* context manager is not included in the Nodex package but should be trivial to implement
 with MayaDeleteNewNodes():
     nodex = (Nodex("1") + Nodex("pSphere1.translateX")) / Nodex("pSphere2.translateY")
     value = nodex.value()
