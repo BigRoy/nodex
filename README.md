@@ -74,6 +74,7 @@ it in a variable and use it's output for a multitude of node trees.
 ##    Code Samples
 
 Multiply two attributes and connect the output value
+
 ```python
 mult = Nodex("pSphere1.translateX") * Nodex("pSphere1.translateY")
 mult.connectTo( Nodex("pSphere1.translateZ") )
@@ -82,6 +83,7 @@ mult.connectTo( Nodex("pSphere1.translateZ") )
 ---
 
 Add together multiple attributes (sum more than two values) and connect the result
+
 ```python
 result = Nodex.sum("pSphere1.translateX", "pSphere1.translateY", "pSphere1.translateZ", 1.0)
 result.connectTo( Nodex("pSphere1.scaleX") )
@@ -90,6 +92,7 @@ result.connectTo( Nodex("pSphere1.scaleX") )
 ---
 
 Clamp an attribute and connect it
+
 ```python
 Nodex.clamp("pSphere1.translateX", min=0, max=1, output="pSphere1.translateY")
 ```
@@ -97,6 +100,7 @@ Nodex.clamp("pSphere1.translateX", min=0, max=1, output="pSphere1.translateY")
 ---
 
 Complex operations become a bit more readable
+
 ```python
 (Nodex("pSphere.translateX") * 2) + 0.5
 ```
@@ -104,6 +108,7 @@ Complex operations become a bit more readable
 ---
 
 Using the Nodex's mixed array instantiation
+
 ```python
 nodex = Nodex([1, 0, "pSphere1.translateX"]) * 3
 print nodex.value()
@@ -114,9 +119,10 @@ This will print `[3, 0, 15]` if *pSphere1.translateX* is a value of 5.
 ---
 
 Or perform a calculation through Maya nodes and clean up the Nodex tree afterwards
+
 ```python
 # The *MayaDeleteNewNodes* context manager is not included in the Nodex package but should be trivial to implement
 with MayaDeleteNewNodes():
-    nodex = (Nodex("1") + Nodex("pSphere1.translateX")) / Nodex("pSphere2.translateY")
+    nodex = (Nodex(1) + Nodex("pSphere1.translateX")) / Nodex("pSphere2.translateY")
     value = nodex.value()
 ```

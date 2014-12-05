@@ -59,9 +59,8 @@ class TestNodexMethods(unittest.TestCase):
         mc.xform("pSphere1", t=(0, 0, 0), absolute=True, objectSpace=True)
 
     def test_additions(self):
-        pass
-        #s = Nodex(1) + Nodex(2)
-        #print s.value()
+        s = Nodex(1) + Nodex(2)
+        print s.value()
 
 if __name__ == '__main__':
     unittest.main()
