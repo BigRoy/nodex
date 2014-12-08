@@ -16,12 +16,6 @@
     @date: May 20th, 2014
     @version: 0.20.1
     @author: Roy Nieterau (roy@colorbleed.nl)
-
-    NOTE ABOUT LICENSING:
-    Currently there is no licensing attached to this package since I'm still investigating the best possible license
-    to support it. I'm looking for one that is open and allows free distribution and re-use of the package.
-    Yet still keep it as something that could be expanded upon by and for the open community.
-    In short, something that says: "We all benefit!"
 """
 
 from version import *
