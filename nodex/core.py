@@ -18,11 +18,14 @@ def connectOrSet(attr, v):
     """
     if not isinstance(attr, pm.Attribute):
         attr = pm.Attribute(attr)
-    try:
-        inputAttr = pm.Attribute(v)
-        pm.connectAttr(inputAttr, attr, force=True)
-    except (pm.MayaAttributeError, pm.MayaNodeError):
-        attr.set(v)
+
+    if not isinstance(v, Nodex):
+        v = Nodex(v)
+
+    if v.isAttribute():
+        pm.connectAttr(v.attr(), attr, force=True)
+    else:
+        attr.set(v.value())
        
         
 def connectOutput(attr, v):
@@ -139,9 +142,9 @@ class Nodex(object):
         return self.__reference
         
     def value(self):
-        try:
-            return pm.Attribute(self.v).get()
-        except (pm.MayaNodeError, RuntimeError):
+        if self.isAttribute():
+            return self.v.get()
+        else:
             return self.v
     # endregion
     
@@ -182,7 +185,7 @@ class Nodex(object):
         """ Returns the node for the attribute that this Nodex instance is referencing.
             If not referencing an attribute an error is raised """
         if self.isAttribute():
-            return self.__reference
+            return self.__reference.node()
         else:
             raise AttributeError("This nodex does not reference an Attribute so does not refer to a node."
                                  "Reference: {0}".format(self.__reference))
@@ -225,13 +228,21 @@ class Nodex(object):
     # Plus-Minus average
     @staticmethod      
     def _plusMinusAverage(*args, **kwargs):
-        d = kwargs.pop("dimensions", 1)
+        d = kwargs.pop("dimensions", None)
         o = kwargs.pop("operation", 1)
         name = kwargs.pop("name", "plusMinusAverage")
-        output = kwargs.pop("output", None)
-        
-        # TODO: If dimension (d) is None, then it should automatically retrieve the biggest dimension from input values (up to 3)
-        #       and use that.
+        output = kwargs.pop("output3D", None)
+
+        # Get dimensions from input Nodex
+        if d is None:
+            d = max(x.dimensions() for x in args)
+
+        if d > 3:
+            raise RuntimeError("Can't use plusMinusAverage with higher dimensions than 3")
+
+        # Get corresponding output attribute/length for the current dimension
+        outputAttrs = {1: "output1D", 2: "output2D", 3: "output3D"}
+        outputAttr = outputAttrs[d]
         
         n = pm.createNode("plusMinusAverage", name=name)
         n.operation.set(o) # average
@@ -239,9 +250,9 @@ class Nodex(object):
             connectOrSet(n.attr("input{dimension}D[{index}]".format(dimension=d, index=i)), v)
             
         if output is not None:
-            connectOutput(n.attr("output"), v)
+            connectOutput(n.attr(outputAttr), v)
             
-        return Nodex(n.attr('output'))
+        return Nodex(n.attr(outputAttr))
     
     # Clamp
     @staticmethod      
@@ -286,14 +297,34 @@ class Nodex(object):
     # Condition
     @staticmethod      
     def _condition(firstTerm=None, secondTerm=None, ifTrue=None, ifFalse=None, output=None, **kwargs):
-        o = kwargs.pop("operation", 1)
-        name = kwargs.pop("name", "clamp")
-        #output = kwargs.pop("output", None)
+        o = kwargs.pop("operation", 0)
+        name = kwargs.pop("name", "condition")
+        d = kwargs.pop("dimensions", None)
+        output = kwargs.pop("output", None)
+
+        # Get dimensions from input Nodex
+        if d is None:
+            d = max(x.dimensions() for x in [firstTerm, secondTerm, ifTrue, ifFalse] if not x is None)
+
+        if d > 3:
+            raise RuntimeError("Can't use plusMinusAverage with higher dimensions than 3")
         
         suffices = ["R", "G", "B"]
         
         n = pm.createNode("condition", name=name)
         n.operation.set(o)
+
+        # region define output attribute
+        # Get corresponding output attribute/length for the current dimension
+        outputAttrs = {1: "outColorR", 2: ["outColorR", "outColorG"], 3: "outColor"}
+        outputAttr = outputAttrs[d]
+        # use node name plus attribute to identify output so we can use it as the nodex directly
+        if isinstance(outputAttr, list):
+            outputAttr = ["{0}.{1}".format(n.name(), x) for x in outputAttr]
+        else:
+            outputAttr = "{0}.{1}".format(n.name(), outputAttr)
+        # endregion
+
         
         if firstTerm is not None:
             connectOrSet(n.attr("firstTerm"), firstTerm)
@@ -303,24 +334,29 @@ class Nodex(object):
         
         if ifTrue is not None:
             connectOrSetVector(n, "colorIfTrue", ifTrue, suffices=suffices)
+        else:
+            n.attr("colorIfTrue").set((1, 1, 1))
         
         if ifFalse is not None:
             connectOrSetVector(n, "colorIfFalse", ifFalse, suffices=suffices)
+        else:
+            n.attr("colorIfFalse").set((0, 0, 0))
             
         if output is not None:
-            connectOutputVector(n, "outColor", output, suffices=suffices)
+            connectOrSet(Nodex(outputAttr), output)
             
-        return Nodex(n.attr("outColor"))
+        return Nodex(outputAttr)
     # endregion
 
     def __calc(self, other, func):
         """ Convenience method for the special methods like __add__, __sub__, etc. """
-        other = other.v if isinstance(other, Nodex) else other
+        if not isinstance(other, Nodex):
+            other = Nodex(other)
         return func(self, other)
 
     # region special methods override: mathematical operators
     def __add__(self, other):
-        return self.__calc(other, func=Nodex.sum1D)
+        return self.__calc(other, func=Nodex.sum)
         
     def __sub__(self, other):
         return self.__calc(other, func=Nodex.subtract)
@@ -360,7 +396,7 @@ class Nodex(object):
     # endregion    
     
     def __str__(self):
-        return self.v
+        return "Nodex({0})".format(self.v)
         
     def __repr__(self):
         return "Nodex({0})".format(self.v)
@@ -381,6 +417,7 @@ Nodex.sum = partial(Nodex._plusMinusAverage, dimensions=None, operation=1, name=
 Nodex.sum1D = partial(Nodex._plusMinusAverage, dimensions=1, operation=1, name="sum1D")
 Nodex.sum2D = partial(Nodex._plusMinusAverage, dimensions=2, operation=1, name="sum2D")
 Nodex.sum3D = partial(Nodex._plusMinusAverage, dimensions=3, operation=1, name="sum3D")
+Nodex.subtract = partial(Nodex._plusMinusAverage, dimensions=None, operation=2, name="subtract")
 Nodex.subtract1D = partial(Nodex._plusMinusAverage, dimensions=1, operation=2, name="subtract1D")
 Nodex.subtract2D = partial(Nodex._plusMinusAverage, dimensions=2, operation=2, name="subtract2D")
 Nodex.subtract3D = partial(Nodex._plusMinusAverage, dimensions=3, operation=2, name="subtract3D")
