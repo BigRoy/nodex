@@ -6,7 +6,8 @@
 
 import abc
 
-class DataType(object):
+
+class DataTypeBase(object):
     """
         Each DataType represents a reference type for a Nodex.
         eg. Boolean, Numerical,
@@ -29,7 +30,7 @@ class DataType(object):
         pass
 
     @abc.abstractmethod
-    def get(self, v):
+    def get(self):
         """
         :param v:
         :return:
@@ -46,12 +47,20 @@ class DataType(object):
     def dimensions(self):
         pass
 
+    @abc.abstractmethod
+    def default(self):
+        """
+        :return: Default value for this datatype. The returned type must be something that can be validly converted by
+                 this datatype in 'self.convertReference'
+        """
+        pass
 
-class Array(DataType):
+
+class Array(DataTypeBase):
     """ The array DataType is rather complex since it can hold a variety of DataTypes. """
 
 
-class Numerical(DataType):
+class Numerical(DataTypeBase):
     pass
 
 
@@ -67,5 +76,5 @@ class Boolean(Numerical):
     pass
 
 
-class Matrix(DataType):
+class Matrix(DataTypeBase):
     pass

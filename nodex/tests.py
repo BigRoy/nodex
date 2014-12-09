@@ -10,6 +10,20 @@ class TestNodexMethods(unittest.TestCase):
         mc.file(new=True, force=True)
         mc.polySphere()  # "pSphere1"
 
+    def test_getitem(self):
+        n = Nodex("pSphere1.t")
+        mc.xform("pSphere1", t=(0, 1, 2), absolute=True, objectSpace=True)
+        self.assertEqual(n[0].dimensions(), 1)
+        self.assertEqual(n[:-1].dimensions(), 2)
+        self.assertEqual(n[:-1].value(), (0, 1))
+
+        # This is a tricky one since the slicing returns a one tuple referencing Nodex.
+        # once grabbing the value it returns it within the one tuple.
+        # TODO: Decide whether this is expected behavior; if not we need to redesign that part of the
+        #       __getitem__ implementation
+        self.assertEqual(n[1:-1].dimensions(), 1)
+        self.assertEqual(n[1:-1].value(), (1.0,))
+
     def test_dimensions(self):
         self.assertEqual(Nodex(1).dimensions(), 1)
         self.assertEqual(Nodex([1, 1]).dimensions(), 2)

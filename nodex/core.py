@@ -72,6 +72,65 @@ def getHighestDimensions(defaultValue, *args):
     return dimensions
 
 
+class PyNodex(object):
+    # TODO: At this stage this is a non-working stub
+    """
+    Abstract class that is base for all Nodex datatype classes.
+
+    The names of nodes and attributes can be passed to this class, and the appropriate subclass will be determined.
+    Also you can pass in a value based on certain datatypes to allow for automatic conversion (eg. Matrices)
+    The conversion are based on definitions defined in `nodex.datatypes`
+
+        >>> PyNodex('persp.tx')
+        dt.Float(u'persp.translateX')
+
+    If the value can't be converted to a valid data type an error will be raised.
+
+    (For now loosely based on the implementation of PyNode in pymel)
+    """
+    def __new__(cls, *args, **kwargs):
+        """ Catch all creation for PyNodex classes, creates correct class depending on type passed. """
+        import datatypes
+
+        dt = kwargs.get("type", None)
+
+        if not args and dt is not None:
+            # Assume default for datatype
+            # Create default value for type if no args provided, but type has been provided
+            if isinstance(dt, datatypes.DataTypeBase):
+                data = dt.default()
+            else:
+                data = dt()     # instantiate by type
+        elif args:
+            data = args[0]
+            if len(args) > 1:
+                # Assume attribute passes as two args: ( node, attr )
+                # Let's use PyMel to do the possible conversion and checks for us and use the resulting Attribute
+                data = pm.PyNode(*args)
+
+        if data is None:
+            raise RuntimeError("No datatype for PyNodex")
+        assert data is not None
+
+        if isinstance(data, PyNodex):
+            return data
+
+        if cls is not PyNodex:
+            # A PyNodex class was explicitly required, if data was passed to init check whether it is compatible with
+            # the required class. If no existing object was passed, create of the required class PyNodex with default
+            # values
+            if not cls.validate(data):
+                raise TypeError("Given data {0} is not compatible with datatype {1}".format(data, cls.__name__))
+            raise NotImplementedError("TODO")
+        else:
+            newcls = datatypes._getType(data)
+
+        if newcls:
+            self = super(PyNodex, cls).__new__(newcls)
+            self.setReference(data) # not sure if this is supposed to be in here
+            return self
+
+
 class Nodex(object):
     """
         The base Nodex class that contains the functionality for the Maya Expressions.
@@ -143,7 +202,7 @@ class Nodex(object):
         if self.isAttribute():
             return self.v.get()
         elif isinstance(self.v, tuple):
-            return (x.value() for x in self.v)
+            return tuple(x.value() for x in self.v)
         else:
             return self.v
     # endregion
@@ -391,7 +450,16 @@ class Nodex(object):
     def __getitem__(self, item):
         # TODO: Implement tests for __getitem__
         # TODO: Implement proper __getitem__
-        # TODO: Implement proper slicing for Attributes (compound/arrays)
+        if self.isAttribute():
+            attr = self.attr()
+            if attr.isArray():
+                if isinstance(item, int):
+                    return Nodex(attr.elementByPhysicalIndex(item))
+                elif isinstance(item, slice):
+                    return Nodex([attr.elementByPhysicalIndex(i) for i in xrange(item.start, item.stop, item.step)])
+            elif attr.isCompound():
+                return Nodex(attr.children()[item])
+
         if isinstance(item, slice):
             return Nodex(self.v[item])
         elif isinstance(item, int):
