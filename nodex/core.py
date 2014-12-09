@@ -26,10 +26,6 @@ def connectOrSet(attr, v):
         pm.connectAttr(v.attr(), attr, force=True)
     else:
         attr.set(v.value())
-       
-        
-def connectOutput(attr, v):
-    pm.connectAttr(n.attr(attr), output, force=True)
         
         
 def connectOrSetVector(n, attr, input, suffices=("X", "Y", "Z")):
@@ -106,10 +102,12 @@ class Nodex(object):
             v = tuple(v)
 
         if isinstance(v, tuple):
-            # TODO: Test if array Nodex performs as supposed to.
-            # 1. validate every element has 'max' single dimension of depth
-            # 2. convert any references internal to the array
-            v = tuple(self.__convertReference(x) for x in v)
+            # Convert any references internal to the array
+            v = tuple(Nodex(x) for x in v)
+            # Validate every element has max single dimension of depth
+            if any(x.dimensions() > 1 for x in v):
+                raise ValueError("Can't create an Array type of Nodex that nests attributes/values with a "
+                                 "higher dimension than one.")
             return v
 
         # single numeric
@@ -144,6 +142,8 @@ class Nodex(object):
     def value(self):
         if self.isAttribute():
             return self.v.get()
+        elif isinstance(self.v, tuple):
+            return (x.value() for x in self.v)
         else:
             return self.v
     # endregion
@@ -167,7 +167,7 @@ class Nodex(object):
         else:
             return isinstance(self.v, (int, float))
     # endregion
-        
+
     # region nodex attribute methods
     def attr(self):
         """ Returns the attribute this Nodex instance is referencing.
@@ -190,15 +190,52 @@ class Nodex(object):
             raise AttributeError("This nodex does not reference an Attribute so does not refer to a node."
                                  "Reference: {0}".format(self.__reference))
         
-    def connectTo(self, other, force=True):
-        """ Connects this Nodex attribute to the `other` object.
-        
-            self (source) ---> other (destination)
+    def connect(self, other, allowGrow=False):
         """
-        # TODO: Implement automatic conversion of input-output types (vector/arrays/etc.)
+            Connects one Nodex attribute/value to another attribute.
+            This method ensures to perform a connection even if the dimensions between the Nodex attributes differs.
+
+            self (source) ---> other (destination)
+
+            :param other: The destination Nodex to connect to.
+            :type other: Nodex
+
+            :return: The resulting dimensions
+        """
         if not isinstance(other, Nodex):
             other = Nodex(other)
-        pm.connectAttr(self.attr(), other.attr(), force=force)
+
+        dim = self.dimensions()
+        otherDim = other.dimensions()
+
+        if not other.isAttribute():
+            raise ValueError('Can\'t connect to a Nodex that does not reference an Attribute.')
+
+        if dim == otherDim:
+            if self.isAttribute():
+                self.attr().connect(other.attr()) # connect pymel attributes
+            else:
+                other.attr().set(self.value())  # assign referenced value
+            return dim
+        elif dim == 1 and allowGrow:   # --> otherDim != 1 and otherDim > 1
+            for i in range(otherDim):
+                self.connect(other[i])
+                logger.warning('Connected single attribute {0} to larger attribute {1}.'
+                               'Attribute connected to all inputs of larger attribute'.format(
+                               self, other))
+            return otherDim
+        elif otherDim < dim:
+            self[:otherDim].connect(other)
+            logger.warning('Truncated attribute {0} to connect to smaller attribute {1}.'.format(
+                            self, other))
+            return otherDim
+        elif otherDim > dim:
+            resultDim = self.connect(other[:dim])  # connect to truncated length of other
+            other[dim+1:].clearValue() # clear remaining values
+            logger.warning('Connected smaller attibute {0} to larger attibute {0}.'
+                           'The resulting plug is larger and remaining values are cleared (set to 0).'.format(
+                           self, other))
+            return resultDim
     # endregion
              
     # region mathematic-utility functions (staticmethods)     
@@ -241,18 +278,20 @@ class Nodex(object):
             raise RuntimeError("Can't use plusMinusAverage with higher dimensions than 3")
 
         # Get corresponding output attribute/length for the current dimension
-        outputAttrs = {1: "output1D", 2: "output2D", 3: "output3D"}
-        outputAttr = outputAttrs[d]
+        resultAttrs = {1: "output1D", 2: "output2D", 3: "output3D"}
+        resultAttr = resultAttrs[d]
         
         n = pm.createNode("plusMinusAverage", name=name)
         n.operation.set(o) # average
         for i, v in enumerate(args):
-            connectOrSet(n.attr("input{dimension}D[{index}]".format(dimension=d, index=i)), v)
-            
+            n_input_attr = n.attr("input{dimension}D[{index}]".format(dimension=d, index=i))
+            v.connect(n_input_attr)
+
+        result = Nodex(n.attr(resultAttr))
         if output is not None:
-            connectOutput(n.attr(outputAttr), v)
+            result.connect(output)
             
-        return Nodex(n.attr(outputAttr))
+        return result
     
     # Clamp
     @staticmethod      
@@ -290,7 +329,8 @@ class Nodex(object):
             connectOrSet(n.attr("input2"), input2)
             
         if output is not None:
-            connectOutput(n.attr("output"), output)
+            pass
+            #connectOutput(n.attr("output"), output)
         
         return Nodex(n.attr("output"))
         
@@ -348,6 +388,15 @@ class Nodex(object):
         return Nodex(outputAttr)
     # endregion
 
+    def __getitem__(self, item):
+        # TODO: Implement tests for __getitem__
+        # TODO: Implement proper __getitem__
+        # TODO: Implement proper slicing for Attributes (compound/arrays)
+        if isinstance(item, slice):
+            return Nodex(self.v[item])
+        elif isinstance(item, int):
+            return Nodex(self.v[item])
+
     def __calc(self, other, func):
         """ Convenience method for the special methods like __add__, __sub__, etc. """
         if not isinstance(other, Nodex):
@@ -402,11 +451,7 @@ class Nodex(object):
         return "Nodex({0})".format(self.v)
                 
 # Static methods
-# These static methods return PyMel nodes that are created for that operation.
-# Though if the keyword argument `returnType` is provided it can be adjusted to either:
-#     0. Create node `pymel.PyNode()`
-#     1. Output attribute as `Nodex()`
-#     2. Output attribute as `pymel.Attribute()`
+# These static methods return a new Nodex instance set to the expected output of the newly created node(s).
 #     
 Nodex.multiply = partial(Nodex._multiplyDivide, operation=1, name="multiply")
 Nodex.multDouble = partial(Nodex._doubleLinear, nodeType="multDoubleLinear", name="multDouble")
@@ -445,5 +490,5 @@ Nodex.lessOrEqual = partial(Nodex._condition, operation=5, name="condition_lessO
 
 # TODO: Implement a method that allows you to quickly merge in any of the mathematical operation on an attribute.
 #       Thus basically grabbing the current outputs for an output and passing them through the newly created node.
-#Nodex("pSphere1.translateX").mergeInto() or something along those lines
+#       Nodex("pSphere1.translateX").mergeInto() or something along those lines
 # TODO: Possibly also mergeInto with a provided input/output so we can easily pass-through a graph of nodes.
