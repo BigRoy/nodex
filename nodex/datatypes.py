@@ -3,78 +3,61 @@
     without breaking the implementation of the Nodex. The idea is to make the Nodex object a lot more
     abstract and extend its use with plug-in datatypes.
 """
+from core import PyNodex
 
-import abc
 
+class Numerical(PyNodex):
+    _priority = 25
 
-class DataTypeBase(object):
-    """
-        Each DataType represents a reference type for a Nodex.
-        eg. Boolean, Numerical,
-    """
-    __metaclass__ = abc.ABCMeta
+    @staticmethod
+    def isValidData(data):
+        if isinstance(data, (float, int, bool)):
+            return True
 
-    def __init__(self, reference):
-        if not self.isValid(reference):
-            raise TypeError("Not a valid reference type for datatype {0}".format(self.__class__.__name__))
-        self._reference = reference
-
-    @abc.abstractmethod
-    def isValid(self, reference):
-        pass
-
-    @abc.abstractmethod
-    def set(self, v):
-        """ Assign a value to the reference
-        """
-        pass
-
-    @abc.abstractmethod
-    def get(self):
-        """
-        :param v:
-        :return:
-        """
-        return self._data
-
-    @abc.abstractmethod
-    def asAttribute(self):
-        """ Creates a node that holds the reference data's value as a constant within an Attribute and returns the
-            connectable Attribute as a Nodex. """
-        pass
-
-    @abc.abstractmethod
-    def dimensions(self):
-        pass
-
-    @abc.abstractmethod
     def default(self):
-        """
-        :return: Default value for this datatype. The returned type must be something that can be validly converted by
-                 this datatype in 'self.convertReference'
-        """
-        pass
+        return 0.0
 
+    def dimensions(self):
+        return 1
 
-class Array(DataTypeBase):
-    """ The array DataType is rather complex since it can hold a variety of DataTypes. """
-
-
-class Numerical(DataTypeBase):
-    pass
-
-
-class Integer(Numerical):
-    pass
-
-
-class Float(Numerical):
-    pass
+    def convertData(self, data):
+        return float(data)
 
 
 class Boolean(Numerical):
-    pass
+    _priority = 5
+
+    @staticmethod
+    def isValidData(data):
+        if isinstance(data, bool):
+            return True
+
+    def convertData(self, data):
+        data = bool(data)
 
 
-class Matrix(DataTypeBase):
-    pass
+class Integer(Numerical):
+    _priority = 10
+
+    @staticmethod
+    def isValidData(data):
+        if isinstance(data, int):
+            return True
+
+
+class Float(Numerical):
+    _priority = 15
+
+    @staticmethod
+    def isValidData(data):
+        if isinstance(data, float):
+            return True
+
+
+class Array(PyNodex):
+    """ The array DataType is rather complex since it can hold a variety of DataTypes. """
+    _priority = 50
+
+
+class Matrix(PyNodex):
+    _priority = 100

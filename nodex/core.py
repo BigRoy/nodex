@@ -2,7 +2,10 @@
 import itertools
 from functools import partial
 import logging
+import abc
 logger = logging.getLogger(__name__)
+
+VERBOSE = True
 
 # maya library
 import maya.cmds as mc
@@ -72,6 +75,34 @@ def getHighestDimensions(defaultValue, *args):
     return dimensions
 
 
+def find_subclasses(module, clazz):
+    import inspect
+    return [cls for name, cls in inspect.getmembers(module) if cls != clazz and
+                                                               inspect.isclass(cls) and
+                                                               issubclass(cls, clazz)]
+
+
+def _getDataTypeFromData(data, datatype=None):
+    if datatype is not None:
+        if not issubclass(datatype, PyNodex):
+            raise TypeError("Preferred datatype should be of type PyNodex")
+
+        if datatype.isValidData(data):
+            return datatype
+
+    import inspect
+    import datatypes
+    klasses = find_subclasses(datatypes, PyNodex)
+
+    for cls in sorted(klasses, key=lambda x: x.priority()):
+        if VERBOSE:
+            logger.debug("Checking data against {0}".format(cls.__name__))
+        if cls.isValidData(data):
+            if VERBOSE:
+                logger.debug("Matched with {0}".format(cls.__name__))
+            return cls
+
+
 class PyNodex(object):
     # TODO: At this stage this is a non-working stub
     """
@@ -88,16 +119,24 @@ class PyNodex(object):
 
     (For now loosely based on the implementation of PyNode in pymel)
     """
+    #__metaclass__ = abc.ABCMeta
+    _priority = -100
+
+    @classmethod
+    def priority(cls):
+        return cls._priority
+
     def __new__(cls, *args, **kwargs):
         """ Catch all creation for PyNodex classes, creates correct class depending on type passed. """
         import datatypes
 
+        data = None
         dt = kwargs.get("type", None)
 
         if not args and dt is not None:
             # Assume default for datatype
             # Create default value for type if no args provided, but type has been provided
-            if isinstance(dt, datatypes.DataTypeBase):
+            if issubclass(dt, PyNodex):
                 data = dt.default()
             else:
                 data = dt()     # instantiate by type
@@ -115,20 +154,71 @@ class PyNodex(object):
         if isinstance(data, PyNodex):
             return data
 
+        newcls = None
         if cls is not PyNodex:
             # A PyNodex class was explicitly required, if data was passed to init check whether it is compatible with
             # the required class. If no existing object was passed, create of the required class PyNodex with default
             # values
             if not cls.validate(data):
                 raise TypeError("Given data {0} is not compatible with datatype {1}".format(data, cls.__name__))
-            raise NotImplementedError("TODO")
+            newcls = cls
         else:
-            newcls = datatypes._getType(data)
+            newcls = _getDataTypeFromData(data, dt)
 
         if newcls:
             self = super(PyNodex, cls).__new__(newcls)
-            self.setReference(data) # not sure if this is supposed to be in here
+            self.setReference(data, validate=False)
             return self
+        else:
+            raise RuntimeError("Could not determine PyNodex datatype for {0}.".format(data))
+
+    @staticmethod
+    def isValidData(data):
+        return False
+
+    def asAttribute(self):
+        """ Creates a node that holds the reference data's value as a constant within an Attribute and returns the
+            connectable Attribute as a Nodex. """
+        raise NotImplementedError()
+
+    def setReference(self, data, validate=True):
+        if validate:
+            if not self.isValidData(data):
+                raise TypeError("Can't set data to this datatype.")
+        self.__data = self.convertData(data)
+
+    @abc.abstractmethod
+    def convertData(self, data):
+        """
+            The returned type must be something that can be validly used as a value again for convertData, plus
+            should be settable to a PyMel attribute (that relates to the type)
+        :param data:
+        :return:
+        """
+        pass
+
+    @abc.abstractmethod
+    def default(self):
+        """
+        :return: Default value for this datatype. The returned type must be something that can be validly converted by
+                 this datatype in 'self.convertReference'
+        """
+        return None
+
+    def value(self):
+        if self.isAttribute():
+            return self.v.get()
+        elif isinstance(self.v, tuple):
+            return tuple(x.value() for x in self.v)
+        else:
+            return self.v
+
+    def dimensions(self):
+        return 1
+
+
+
+
 
 
 class Nodex(object):

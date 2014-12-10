@@ -1,5 +1,25 @@
 from nodex.core import *
 import unittest
+import nodex.datatypes
+
+
+class TestPyNodexMethods(unittest.TestCase):
+    def setUp(self):
+        # TODO: Add little prompt dialog that this will force a new scene to open
+        #       Thus user might lose current work. :)
+        #       Basically prompt to SAVE!
+        mc.file(new=True, force=True)
+        mc.polySphere()  # "pSphere1"
+
+    def test_pynodex_types(self):
+        self.assertEqual(type(PyNodex(True)), nodex.datatypes.Boolean)
+        self.assertEqual(type(PyNodex(False)), nodex.datatypes.Boolean)
+        self.assertEqual(type(PyNodex(0.1)), nodex.datatypes.Float)
+        self.assertEqual(type(PyNodex(1.0)), nodex.datatypes.Float)
+        self.assertEqual(type(PyNodex(-0.595412)), nodex.datatypes.Float)
+        self.assertEqual(type(PyNodex(1)), nodex.datatypes.Integer)
+        self.assertEqual(type(PyNodex(-9)), nodex.datatypes.Integer)
+        self.assertEqual(type(PyNodex(1231)), nodex.datatypes.Integer)
 
 
 class TestNodexMethods(unittest.TestCase):
