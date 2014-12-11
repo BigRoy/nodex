@@ -15,48 +15,6 @@ import pymel.core
 import nodex.utils
 
 
-def connectOrSet(attr, v):
-    """
-        Connect or set the attribute.
-    """
-    if not isinstance(attr, pymel.core.Attribute):
-        attr = pymel.core.Attribute(attr)
-
-    if not isinstance(v, Nodex):
-        v = Nodex(v)
-
-    if v.isAttribute():
-        pymel.core.connectAttr(v.attr(), attr, force=True)
-    else:
-        attr.set(v.value())
-        
-        
-def connectOrSetVector(n, attr, input, suffices=("X", "Y", "Z")):
-    if isinstance(input, (list, tuple)):
-        for suffix, v in itertools.izip(suffices, input):
-            connectOrSet(n.attr("{0}{1}".format(attr, suffix)), v)
-    else:
-        try:
-            connectOrSet(n.attr("{0}".format(attr)), input)
-        except (RuntimeError, pymel.core.MayaAttributeError):
-            connectOrSet(n.attr("{0}{1}".format(attr, suffices[0])), input)
-        
-        
-def connectOutputVector(n, attr, output, suffices=("X", "Y", "Z")):
-    if isinstance(output, (list, tuple)):
-        for suffix, v in itertools.izip(suffices, output):
-            pymel.core.connectAttr(n.attr("{0}{1}".format(attr, suffix), v, force=True))
-    else:
-        outputAttr = pymel.core.Attribute(output)
-        if outputAttr.isCompound() or outputAttr.isArray():
-            try:
-                pymel.core.connectAttr(n.attr(attr), outputAttr, force=True)
-            except RuntimeError:
-                pymel.core.connectAttr(n.attr("{0}{1}".format(attr, suffices[0])), outputAttr, force=True)
-        else:
-            pymel.core.connectAttr(n.attr("{0}{1}".format(attr, suffices[0])), outputAttr, force=True)
-
-
 def getHighestDimensions(defaultValue, *args):
     """
         Returns the highest dimensions from multiple Nodex or return the defaultValue if it is higher than any
@@ -222,7 +180,7 @@ class Nodex(object):
     def dimensions(self):
         return 1
 
-# region nodex value-reference methods
+    # region nodex value-reference methods
     @property
     def v(self):
         """ Short convenience property to get to the Nodex's referenced content """
@@ -281,8 +239,10 @@ class Nodex(object):
         else:
             raise AttributeError("This nodex does not reference an Attribute so does not refer to a node."
                                  "Data: {0}".format(self._data))
+    # endregion
 
     def clearValue(self):
+        """ Set the default value for this Nodex instance (reset value) """
         self.connect(Nodex(self.default()))
 
     def connect(self, other, allowGrow=False):
