@@ -75,23 +75,24 @@ def plusMinusAverage(*args, **kwargs):
 
 
 def multiplyDivide(input1=None, input2=None, output=None, **kwargs):
+    from nodex.core import Nodex
     o = kwargs.pop("operation", 1)
     name = kwargs.pop("name", "multiplyDivide")
 
     n = pm.createNode("multiplyDivide", name=name)
     n.operation.set(o) # average
 
-    for attr, input in [("input1", input1), ("input2", input2)]:
-        if input is not None:
-            connectOrSetVector(n, attr, input)
-
+    for attr, inputValue in [("input1", input1),
+                             ("input2", input2)]:
+        if inputValue is not None:
+            Nodex(inputValue).connect(n.attr(attr))
 
     if output is not None:
-        connectOutputVector(n, "output", output)
+        Nodex(output).connect(n.attr("output"))
 
-    dimensions = getHighestDimensions(3, input1, input2)
-    if dimensions > 1:
-        pass
+    #dimensions = getHighestDimensions(3, input1, input2)
+    #if dimensions > 1:
+    #    pass
 
     return Nodex(n.attr('output'))
 
@@ -136,6 +137,7 @@ def doubleLinear(input1=None, input2=None, output=None, nodeType="multDoubleLine
 
 
 def condition(firstTerm=None, secondTerm=None, ifTrue=None, ifFalse=None, output=None, **kwargs):
+    from nodex.core import Nodex
     o = kwargs.pop("operation", 0)
     name = kwargs.pop("name", "condition")
     d = kwargs.pop("dimensions", None)
@@ -166,23 +168,23 @@ def condition(firstTerm=None, secondTerm=None, ifTrue=None, ifFalse=None, output
 
 
     if firstTerm is not None:
-        connectOrSet(n.attr("firstTerm"), firstTerm)
+        Nodex(firstTerm).connect(n.attr("firstTerm"))
 
     if secondTerm is not None:
-        connectOrSet(n.attr("secondTerm"), secondTerm)
+        Nodex(secondTerm).connect(n.attr("secondTerm"))
 
     if ifTrue is not None:
-        connectOrSetVector(n, "colorIfTrue", ifTrue, suffices=suffices)
+        Nodex(ifTrue).connect(n.attr("colorIfTrue"))
     else:
         n.attr("colorIfTrue").set((1, 1, 1))
 
     if ifFalse is not None:
-        connectOrSetVector(n, "colorIfFalse", ifFalse, suffices=suffices)
+        Nodex(ifFalse).connect(n.attr("colorIfFalse"))
     else:
         n.attr("colorIfFalse").set((0, 0, 0))
 
     if output is not None:
-        connectOrSet(Nodex(outputAttr), output)
+        Nodex(ifFalse).connect(outputAttr)
 
     return Nodex(outputAttr)
 

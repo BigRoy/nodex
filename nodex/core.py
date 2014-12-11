@@ -5,8 +5,6 @@ import logging
 import abc
 logger = logging.getLogger(__name__)
 
-VERBOSE = True
-
 # maya library
 import maya.cmds as mc
 import pymel.core
@@ -14,23 +12,7 @@ import pymel.core
 # local library
 import nodex.utils
 
-
-def getHighestDimensions(defaultValue, *args):
-    """
-        Returns the highest dimensions from multiple Nodex or return the defaultValue if it is higher than any
-        of the given dimensions from the set of Nodex.
-    """
-    dimensions = None
-    for nodex in args:
-        if nodex:
-            nodexDimensions = Nodex(nodex).dimensions()
-            if dimensions is None or nodexDimensions > dimensions:
-                dimensions = nodexDimensions
-
-    if dimensions is None:
-        dimensions = defaultValue
-        
-    return dimensions
+VERBOSE = False
 
 
 def find_subclasses(module, clazz):
@@ -54,15 +36,18 @@ def _getDataTypeFromData(data, datatype=None):
 
     for cls in sorted(klasses, key=lambda x: x.priority()):
         if VERBOSE:
-            logger.debug("Checking data against {0}".format(cls.__name__))
+            logger.debug("Checking data {0} against {1}".format(data, cls.__name__))
         if cls.isValidData(data):
             if VERBOSE:
-                logger.debug("Matched with {0}".format(cls.__name__))
+                logger.debug("Matched data {0} with {0}".format(data, cls.__name__))
             return cls
 
 
+class UndefinedNodexError(RuntimeError):
+    pass
+
+
 class Nodex(object):
-    # TODO: At this stage this is a non-working stub
     """
     Abstract class that is base for all Nodex datatype classes.
 
@@ -90,14 +75,14 @@ class Nodex(object):
         data = None
         dt = kwargs.get("type", None)
 
-        if not args and dt is not None:
+        if not args:
             # Assume default for datatype
             # Create default value for type if no args provided, but type has been provided
-            if issubclass(dt, Nodex):
-                data = dt.default()
-            else:
+            if issubclass(cls, Nodex):
+                data = cls.default()
+            elif dt is not None:
                 data = dt()     # instantiate by type
-        elif args:
+        else:
             data = args[0]
             if len(args) > 1:
                 # Assume attribute passes as two args: ( node, attr )
@@ -105,7 +90,7 @@ class Nodex(object):
                 data = pymel.core.PyNode(*args)
 
         if data is None:
-            raise RuntimeError("No datatype for PyNodex")
+            raise TypeError("No valid datatype for Nodex. Data {0}".format(data))
         assert data is not None
 
         if isinstance(data, Nodex):
@@ -116,7 +101,7 @@ class Nodex(object):
             # A PyNodex class was explicitly required, if data was passed to init check whether it is compatible with
             # the required class. If no existing object was passed, create of the required class PyNodex with default
             # values
-            if not cls.validate(data):
+            if not cls.isValidData(data):
                 raise TypeError("Given data {0} is not compatible with datatype {1}".format(data, cls.__name__))
             newcls = cls
         else:
@@ -127,11 +112,7 @@ class Nodex(object):
             self.setReference(data, validate=False)
             return self
         else:
-            raise RuntimeError("Could not determine Nodex datatype for {0}.".format(data))
-
-    def __init__(self, *args, **kwargs):
-        self._dimensions = None
-        self._data = None
+            raise UndefinedNodexError("Could not determine Nodex datatype for {0}.".format(data))
 
     @staticmethod
     def isValidData(data):
@@ -143,12 +124,10 @@ class Nodex(object):
         raise NotImplementedError()
 
     def setReference(self, data, validate=True):
-        self._dimensions = None # remove cached dimensions
+        self._dimensions = None     # remove cached dimensions
         if validate:
             if not self.isValidData(data):
                 raise TypeError("Can't set data to this datatype.")
-        print 'getting data', data
-        print 'setting data to', self.convertData(data)
         self._data = self.convertData(data)
 
     @abc.abstractmethod
@@ -156,13 +135,11 @@ class Nodex(object):
         """
             The returned type must be something that can be validly used as a value again for convertData, plus
             should be settable to a PyMel attribute (that relates to the type)
-        :param data:
-        :return:
         """
         pass
 
-    @abc.abstractmethod
-    def default(self):
+    @staticmethod
+    def default():
         """
         :return: Default value for this datatype. The returned type must be something that can be validly converted by
                  this datatype in 'self.convertData'
@@ -176,9 +153,6 @@ class Nodex(object):
             return tuple(x.value() for x in self.v)
         else:
             return self.v
-
-    def dimensions(self):
-        return 1
 
     # region nodex value-reference methods
     @property
@@ -205,7 +179,7 @@ class Nodex(object):
 
         if self.isAttribute():
             self._dimensions = nodex.utils.attrDimensions(self.attr())
-            return self.__dimensions
+            return self._dimensions
         elif self.isSingleNumeric():
             return 1
         else:
@@ -264,7 +238,8 @@ class Nodex(object):
         otherDim = other.dimensions()
 
         if not other.isAttribute():
-            raise ValueError('Can\'t connect to a Nodex that does not reference an Attribute.')
+            raise ValueError('Can\'t connect to a Nodex that does not reference an Attribute. '
+                             'Other is: {0}'.format(other))
 
         if dim == otherDim:
             if self.isAttribute():
@@ -299,8 +274,72 @@ class Nodex(object):
     def __repr__(self):
         return "{0}({1})".format(self.__class__.__name__, self.v)
 
+    def __getitem__(self, item):
+        # TODO: Implement tests for __getitem__
+        # TODO: Implement proper __getitem__
+        if self.isAttribute():
+            attr = self.attr()
+            if attr.isArray():
+                if isinstance(item, int):
+                    return Nodex(attr.elementByPhysicalIndex(item))
+                elif isinstance(item, slice):
+                    return Nodex([attr.elementByPhysicalIndex(i) for i in xrange(item.start, item.stop, item.step)])
+            elif attr.isCompound():
+                return Nodex(attr.children()[item])
+
+        if isinstance(item, slice):
+            return Nodex(self.v[item])
+        elif isinstance(item, int):
+            return Nodex(self.v[item])
+
 
 # TODO: Implement a method that allows you to quickly merge in any of the mathematical operation on an attribute.
 #       Thus basically grabbing the current outputs for an output and passing them through the newly created node.
 #       Nodex("pSphere1.translateX").mergeInto() or something along those lines
 # TODO: Possibly also mergeInto with a provided input/output so we can easily pass-through a graph of nodes.
+
+
+class Math(object):
+    @staticmethod
+    def bimath(self, other, func):
+        """ Convenience method for the special methods like __add__, __sub__, etc. """
+        if not isinstance(other, Nodex):
+            other = Nodex(other)
+
+        return func(self, other)
+
+    sum = partial(nodex.utils.plusMinusAverage, operation=1, name="sum", dimensions=None)
+    multiply = partial(nodex.utils.multiplyDivide, operation=1, name="multiply")
+    multDouble = partial(nodex.utils.doubleLinear, nodeType="multDoubleLinear", name="multDouble")
+    divide = partial(nodex.utils.multiplyDivide, operation=2, name="divide")
+    power = partial(nodex.utils.multiplyDivide, operation=3, name="power")
+    add = partial(nodex.utils.doubleLinear, nodeType="addDoubleLinear", name="add")
+    sum = partial(nodex.utils.plusMinusAverage, dimensions=None, operation=1, name="sum") # TODO: Implement THIS!
+    sum1D = partial(nodex.utils.plusMinusAverage, dimensions=1, operation=1, name="sum1D")
+    sum2D = partial(nodex.utils.plusMinusAverage, dimensions=2, operation=1, name="sum2D")
+    sum3D = partial(nodex.utils.plusMinusAverage, dimensions=3, operation=1, name="sum3D")
+    subtract = partial(nodex.utils.plusMinusAverage, dimensions=None, operation=2, name="subtract")
+    subtract1D = partial(nodex.utils.plusMinusAverage, dimensions=1, operation=2, name="subtract1D")
+    subtract2D = partial(nodex.utils.plusMinusAverage, dimensions=2, operation=2, name="subtract2D")
+    subtract3D = partial(nodex.utils.plusMinusAverage, dimensions=3, operation=2, name="subtract3D")
+    average1D = partial(nodex.utils.plusMinusAverage, dimensions=1, operation=3, name="average1D")
+    average2D = partial(nodex.utils.plusMinusAverage, dimensions=2, operation=3, name="average2D")
+    average3D = partial(nodex.utils.plusMinusAverage, dimensions=3, operation=3, name="average3D")
+    clamp = partial(nodex.utils.clamp, name="clamp")
+    equal = partial(nodex.utils.condition, operation=0, name="equal")
+    notEqual = partial(nodex.utils.condition, operation=1, name="notEqual")
+    greaterThan = partial(nodex.utils.condition, operation=2, name="greaterThan")
+    greaterOrEqual = partial(nodex.utils.condition, operation=3, name="greaterOrEqual")
+    lessThan = partial(nodex.utils.condition, operation=4, name="lessThan")
+    lessOrEqual = partial(nodex.utils.condition, operation=5, name="lessOrEqual")
+
+# TODO: Implement these methods/nodes (not necessarily in order of importance):
+#Math.blend (=blendColors)
+#Math.setRange
+#Math.contrast
+#Math.reverse
+#Math.stencil
+#Math.overlay (= multiple nodes)
+#Math.vectorProduct
+#Math.angleBetween
+#Math.unitConversion

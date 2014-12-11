@@ -12,14 +12,41 @@ class TestNodexMethods(unittest.TestCase):
         mc.polySphere()  # "pSphere1"
 
     def test_types(self):
+        # boolean
         self.assertEqual(type(Nodex(True)), nodex.datatypes.Boolean)
         self.assertEqual(type(Nodex(False)), nodex.datatypes.Boolean)
+
+        # float
         self.assertEqual(type(Nodex(0.1)), nodex.datatypes.Float)
         self.assertEqual(type(Nodex(1.0)), nodex.datatypes.Float)
         self.assertEqual(type(Nodex(-0.595412)), nodex.datatypes.Float)
+
+        # integer
         self.assertEqual(type(Nodex(1)), nodex.datatypes.Integer)
         self.assertEqual(type(Nodex(-9)), nodex.datatypes.Integer)
         self.assertEqual(type(Nodex(1231)), nodex.datatypes.Integer)
+
+        # array
+        with self.assertRaises(UndefinedNodexError):
+            Nodex([])
+
+        self.assertEqual(type(Nodex([1,2,3])), nodex.datatypes.Array)
+        self.assertEqual(type(Nodex([10]*10)), nodex.datatypes.Array)
+
+        # none-types
+        with self.assertRaises(TypeError):
+            Nodex(None)
+
+        # default values
+        nodex.datatypes.Boolean()
+        nodex.datatypes.Float()
+        nodex.datatypes.Integer()
+
+    def test_multiplyDivide(self):
+        # TODO: This will fail. Implement multiplyDivide correctly.
+        result = nodex.datatypes.Float() * nodex.datatypes.Integer()
+        result += 1
+        result.value()
 
     def test_getitem(self):
         n = Nodex("pSphere1.t")
@@ -34,6 +61,23 @@ class TestNodexMethods(unittest.TestCase):
         #       __getitem__ implementation
         self.assertEqual(n[1:-1].dimensions(), 1)
         self.assertEqual(n[1:-1].value(), (1.0,))
+
+        # Check if long arrays work as execpted
+        self.assertEqual(Nodex([1]*10000).value(), tuple([1] * 10000))
+        v = tuple(range(150))
+        self.assertEqual(Nodex(v).value(), v)
+
+    def test_speed(self):
+        ''' Test whether the speed doesn't exceed a tremendous slowdown '''
+        import time
+
+        # long array
+        start = time.time()
+        Nodex([1]*10000)
+        Nodex(range(500))
+        end = time.time()
+        self.assertLess(end-start, 2.0, msg="Long array speed test")
+
 
     def test_dimensions(self):
         self.assertEqual(Nodex(1).dimensions(), 1)
@@ -95,7 +139,7 @@ class TestNodexMethods(unittest.TestCase):
         xy = (Nodex("pSphere1.tx") == Nodex("pSphere1.ty"))
         yz = (Nodex("pSphere1.ty") == Nodex("pSphere1.tz"))
         xz = (Nodex("pSphere1.tx") == Nodex("pSphere1.tz"))
-        sum = Nodex.sum(xy, yz, xz) # sum in a single node
+        sum = Math.sum(xy, yz, xz) # sum in a single node
         cond_all = (sum == 3)
 
         mc.xform("pSphere1", t=(0, 0, 0), absolute=True, objectSpace=True)
