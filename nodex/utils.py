@@ -80,7 +80,7 @@ def multiplyDivide(input1=None, input2=None, output=None, **kwargs):
     name = kwargs.pop("name", "multiplyDivide")
 
     n = pm.createNode("multiplyDivide", name=name)
-    n.operation.set(o) # average
+    n.operation.set(o)  # multiply, divide, pow, etc.
 
     for attr, inputValue in [("input1", input1),
                              ("input2", input2)]:
@@ -88,7 +88,7 @@ def multiplyDivide(input1=None, input2=None, output=None, **kwargs):
             Nodex(inputValue).connect(n.attr(attr))
 
     if output is not None:
-        Nodex(output).connect(n.attr("output"))
+        Nodex(n.attr("output")).connect(output)
 
     #dimensions = getHighestDimensions(3, input1, input2)
     #if dimensions > 1:

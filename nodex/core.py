@@ -96,6 +96,10 @@ class Nodex(object):
         if isinstance(data, Nodex):
             return data
 
+        # We shouldn't make this assumption here, plus it breaks a lot of stuff. :)
+        #if isinstance(data, (list, tuple)) and len(data) == 1:
+        #    data = data[0]
+
         newcls = None
         if cls is not Nodex:
             # A PyNodex class was explicitly required, if data was passed to init check whether it is compatible with
@@ -203,7 +207,12 @@ class Nodex(object):
 
     def isAttribute(self):
         """ Returns True if this Nodex instance references a valid attribute, else False. """
-        return isinstance(self._data, pymel.core.Attribute)
+        #if isinstance(self._data, (tuple)) and all(isinstance(x, pymel.core.Attribute) for x in self._data):
+        #    return True
+        if isinstance(self._data, pymel.core.Attribute):
+            return True
+
+        return False
 
     def node(self):
         """ Returns the node for the attribute that this Nodex instance is referencing.

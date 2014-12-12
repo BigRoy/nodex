@@ -44,6 +44,7 @@ class TestNodexMethods(unittest.TestCase):
 
     def test_multiplyDivide(self):
         # TODO: This will fail. Implement multiplyDivide correctly.
+        # Current issue is with 'isAttribute()' implementation on Arrays.
         result = nodex.datatypes.Float() * nodex.datatypes.Integer()
         result += 1
         result.value()

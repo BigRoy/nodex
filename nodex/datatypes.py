@@ -7,6 +7,13 @@ from core import Nodex, Math
 import nodex.utils
 from functools import partial
 import pymel.core
+import pymel.core.datatypes
+import maya.OpenMaya
+import maya.api.OpenMaya
+
+# TODO: It's possibly simpler to remove the either convertData or isValidData method and create a single method that \
+#       will return converted data but raise an InvalidDataError if it doesn't. This will reduce code duplicity, plus
+#       is likely a tiny bit faster.
 
 
 class Numerical(Nodex):
@@ -251,11 +258,47 @@ class Array(Nodex):
     # endregion
 
 
-
 class Vector(Nodex):
     # TODO: Implement vector math (cross-product, dot-product)
     _priority = 1000
 
+
 class Matrix(Nodex):
     # TODO: Implement matrix math
     _priority = 1001
+
+    @staticmethod
+    def isValidData(data):
+
+        # attribute
+        # TODO: Check what the actual type of a Matrix attribute is and implement support
+        # if isinstance(data, pymel.core.Attribute):
+        #     return data.type() == "matrix"
+        # elif isinstance(data, basestring):
+        #     attr = pymel.core.Attribute(data)
+        #     return attr.type() == "matrix"
+
+        # matrix data
+        if isinstance(data, (pymel.core.datatypes.Matrix, pymel.core.datatypes.FloatMatrix,
+                             maya.OpenMaya.MMatrix, maya.OpenMaya.MFloatMatrix,
+                             maya.api.OpenMaya.MMatrix, maya.api.OpenMaya.MFloatMatrix)):
+            return True
+
+        allowed_iterables = (list, tuple)
+
+        # list, like [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+        if isinstance(data, allowed_iterables) and len(data) == 16:
+            return True
+
+        # nested list, like: [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
+        if isinstance(data, allowed_iterables) and len(data) == 4 and \
+            all(len(x) == 4 for x in data if isinstance(x, allowed_iterables)):
+            return True
+
+    def convertData(self, data):
+        # TODO: Implement the conversion to consistent matrix data that can be directly set to the Matrix attribute
+        return data
+
+    @staticmethod
+    def default():
+        return maya.OpenMaya.MMatrix()
