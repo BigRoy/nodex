@@ -1,4 +1,5 @@
 import pymel.core as pm
+import maya.cmds as mc
 
 
 
@@ -82,22 +83,37 @@ def multiplyDivide(input1=None, input2=None, output=None, **kwargs):
     n = pm.createNode("multiplyDivide", name=name)
     n.operation.set(o)  # multiply, divide, pow, etc.
 
-    for attr, inputValue in [("input1", input1),
-                             ("input2", input2)]:
+    d = kwargs.pop("dimensions", None)
+
+    # Get dimensions from input Nodex
+    if d is None:
+        d = max(x.dimensions() for x in [input1, input2, output] if not x is None)
+
+    if d > 3:
+        raise RuntimeError("Can't use plusMinusAverage with higher dimensions than 3")
+
+    # Attrs for dimensions
+    input1Attrs = {1: "input1X", 2: ["input1X", "input1Y"], 3: "input1"}
+    input1Attr = input1Attrs[d]
+    input2Attrs = {1: "input2X", 2: ["input2X", "input2Y"], 3: "input2"}
+    input2Attr = input2Attrs[d]
+    outputAttrs = {1: "outputX", 2: ["outputX", "outputY"], 3: "output"}
+    outputAttr = outputAttrs[d]
+
+    for attr, inputValue in [(input1Attr, input1),
+                             (input2Attr, input2)]:
         if inputValue is not None:
             Nodex(inputValue).connect(n.attr(attr))
 
     if output is not None:
-        Nodex(n.attr("output")).connect(output)
+        Nodex(n.attr(outputAttr)).connect(output)
 
-    #dimensions = getHighestDimensions(3, input1, input2)
-    #if dimensions > 1:
-    #    pass
-
-    return Nodex(n.attr('output'))
+    return Nodex(n.attr(outputAttr))
 
 
 def clamp(input=None, min=None, max=None, output=None, **kwargs):
+    # TODO: Revise utils.clamp to work with the new Nodex class
+
     name = kwargs.pop("name", "clamp")
     suffices = ["R", "G", "B"]
 
@@ -119,19 +135,19 @@ def clamp(input=None, min=None, max=None, output=None, **kwargs):
 
 
 def doubleLinear(input1=None, input2=None, output=None, nodeType="multDoubleLinear", **kwargs):
+    from nodex.core import Nodex
 
     name = kwargs.pop("name", "clamp")
     n = pm.createNode(nodeType, name=name)
 
     if input1 is not None:
-        connectOrSet(n.attr("input1"), input1)
+        Nodex(input1).connect(n.attr('input1'))
 
     if input2 is not None:
-        connectOrSet(n.attr("input2"), input2)
+        Nodex(input2).connect(n.attr('input2'))
 
     if output is not None:
-        pass
-        #connectOutput(n.attr("output"), output)
+        Nodex(n.attr('output')).connect(output)
 
     return Nodex(n.attr("output"))
 
@@ -189,3 +205,8 @@ def condition(firstTerm=None, secondTerm=None, ifTrue=None, ifFalse=None, output
     return Nodex(outputAttr)
 
 # endregion
+
+
+def ensurePluginsLoaded(plugins):
+    for p in plugins:
+        mc.loadPlugin(p, quiet=True)

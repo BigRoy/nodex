@@ -21,6 +21,6 @@
 from version import *
 
 __author__ = "Roy Nieterau"
-__all__ = ['core']
+__all__ = ['core', 'datatypes']
 
 import unittest

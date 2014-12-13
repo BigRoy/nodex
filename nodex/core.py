@@ -15,34 +15,6 @@ import nodex.utils
 VERBOSE = False
 
 
-def find_subclasses(module, clazz):
-    import inspect
-    return [cls for name, cls in inspect.getmembers(module) if cls != clazz and
-                                                               inspect.isclass(cls) and
-                                                               issubclass(cls, clazz)]
-
-
-def _getDataTypeFromData(data, datatype=None):
-    if datatype is not None:
-        if not issubclass(datatype, Nodex):
-            raise TypeError("Preferred datatype should be of type PyNodex")
-
-        if datatype.isValidData(data):
-            return datatype
-
-    import inspect
-    import datatypes
-    klasses = find_subclasses(datatypes, Nodex)
-
-    for cls in sorted(klasses, key=lambda x: x.priority()):
-        if VERBOSE:
-            logger.debug("Checking data {0} against {1}".format(data, cls.__name__))
-        if cls.isValidData(data):
-            if VERBOSE:
-                logger.debug("Matched data {0} with {0}".format(data, cls.__name__))
-            return cls
-
-
 class UndefinedNodexError(RuntimeError):
     pass
 
@@ -55,9 +27,6 @@ class Nodex(object):
     Also you can pass in a value based on certain datatypes to allow for automatic conversion (eg. Matrices)
     The conversion are based on definitions defined in `nodex.datatypes`
 
-        >>> Nodex('persp.tx')
-        dt.Float(u'persp.translateX')
-
     If the value can't be converted to a valid data type an error will be raised.
 
     (For now loosely based on the implementation of PyNode in pymel)
@@ -69,7 +38,7 @@ class Nodex(object):
         return cls._priority
 
     def __new__(cls, *args, **kwargs):
-        """ Catch all creation for PyNodex classes, creates correct class depending on type passed. """
+        """ Catch all creation for Nodex classes, creates correct class depending on type passed. """
         import datatypes
 
         data = None
@@ -90,7 +59,7 @@ class Nodex(object):
                 data = pymel.core.PyNode(*args)
 
         if data is None:
-            raise TypeError("No valid datatype for Nodex. Data {0}".format(data))
+            raise TypeError("A Nodex cannot be instantiated with None data. Data received: {0}".format(data))
         assert data is not None
 
         if isinstance(data, Nodex):
@@ -102,8 +71,8 @@ class Nodex(object):
 
         newcls = None
         if cls is not Nodex:
-            # A PyNodex class was explicitly required, if data was passed to init check whether it is compatible with
-            # the required class. If no existing object was passed, create of the required class PyNodex with default
+            # A Nodex class was explicitly required, if data was passed to init check whether it is compatible with
+            # the required class. If no existing object was passed, create of the required class Nodex with default
             # values
             if not cls.isValidData(data):
                 raise TypeError("Given data {0} is not compatible with datatype {1}".format(data, cls.__name__))
@@ -168,12 +137,13 @@ class Nodex(object):
         return self._data
 
     def value(self):
-        if self.isAttribute():
-            return self.v.get()
+        data = self._data
+        if self.isSingleAttribute():
+            return data.get()
         elif isinstance(self.v, tuple):
-            return tuple(x.value() for x in self.v)
+            return tuple(x.get() if isinstance(x, pymel.core.Attribute) else x.value() for x in data)
         else:
-            return self.v
+            return data
     # endregion
 
     # region nodex combined methods (whilst referencing: attribute || single numeric || array)
@@ -181,35 +151,46 @@ class Nodex(object):
         if self._dimensions is not None:
             return self._dimensions
 
-        if self.isAttribute():
+        if self.isSingleAttribute():
             self._dimensions = nodex.utils.attrDimensions(self.attr())
             return self._dimensions
+        elif self.isAttribute():
+            # Since it's not a single numeric we know it's a tuple (see `self.isAttribute()`)
+            return len(self._data)
         elif self.isSingleNumeric():
             return 1
         else:
             return len(self._data)
 
     def isSingleNumeric(self):
-        if self.isAttribute():
+        if self.isSingleAttribute():
             return nodex.utils.attrDimensions(self.attr()) == 1
         else:
-            return isinstance(self._data, (int, float))
+            return isinstance(self._data, (int, float, bool))
     # endregion
 
     # region nodex attribute methods
     def attr(self):
         """ Returns the attribute this Nodex instance is referencing.
-            If not referencing an attribute an error is raised """
+            If not referencing an attribute an error is raised
+
+            :rtype: pymel.core.Attribute or tuple
+        """
         if self.isAttribute():
             return self._data
         else:
             return None
 
+    def isSingleAttribute(self):
+        if isinstance(self._data, pymel.core.Attribute):
+            return True
+
     def isAttribute(self):
         """ Returns True if this Nodex instance references a valid attribute, else False. """
-        #if isinstance(self._data, (tuple)) and all(isinstance(x, pymel.core.Attribute) for x in self._data):
-        #    return True
-        if isinstance(self._data, pymel.core.Attribute):
+        if isinstance(self._data, tuple) and (all(isinstance(x, pymel.core.Attribute) or
+                                                  (isinstance(x, Nodex) and x.isAttribute())) for x in self._data):
+            return True
+        elif self.isSingleAttribute():
             return True
 
         return False
@@ -226,9 +207,12 @@ class Nodex(object):
 
     def clearValue(self):
         """ Set the default value for this Nodex instance (reset value) """
-        self.connect(Nodex(self.default()))
+        defaultValue = self.default()
+        if defaultValue is None:
+            raise RuntimeError("Can't clear the value for: {0}".format(self))
+        self.setReference(defaultValue)
 
-    def connect(self, other, allowGrow=False):
+    def connect(self, other, allowGrow=False, clearLarger=True):
         """
             Connects one Nodex attribute/value to another attribute.
             This method ensures to perform a connection even if the dimensions between the Nodex attributes differs.
@@ -251,10 +235,22 @@ class Nodex(object):
                              'Other is: {0}'.format(other))
 
         if dim == otherDim:
-            if self.isAttribute():
+            if self.isSingleAttribute():
                 self.attr().connect(other.attr()) # connect pymel attributes
+            elif self.isAttribute():
+                # non-single Attribute
+                for i, x in enumerate(self._data):
+                    x.connect(other[i].attr())
             else:
-                other.attr().set(self.value())  # assign referenced value
+                if other.isSingleAttribute():
+                    other.attr().set(self.value())  # assign referenced value
+                else:
+                    if dim == 1 and otherDim == 1:  # the magical one-tuple array issue
+                        other[0].attr().set(self.value())  # assign referenced value
+                    else:
+                        values = self.value()
+                        for i, other_element in enumerate(other):
+                            other_element.attr().set(values[i])  # assign referenced value
             return dim
         elif dim == 1 and allowGrow:   # --> otherDim != 1 and otherDim > 1
             for i in range(otherDim):
@@ -270,10 +266,10 @@ class Nodex(object):
             return otherDim
         elif otherDim > dim:
             resultDim = self.connect(other[:dim])  # connect to truncated length of other
-            other[dim+1:].clearValue()   # clear remaining values
-            logger.warning('Connected smaller attibute {0} to larger attibute {0}.'
-                           'The resulting plug is larger and remaining values are cleared (set to 0).'.format(
-                           self, other))
+            logger.warning('Connected smaller attibute {0} to larger attibute {0}.')
+            if clearLarger:
+                other[dim+1:].clearValue()   # clear remaining values
+                logger.warning('clearLarger parameter is True, remaining values are cleared.'.format(self, other))
             return resultDim
     # endregion
 
@@ -284,9 +280,7 @@ class Nodex(object):
         return "{0}({1})".format(self.__class__.__name__, self.v)
 
     def __getitem__(self, item):
-        # TODO: Implement tests for __getitem__
-        # TODO: Implement proper __getitem__
-        if self.isAttribute():
+        if self.isSingleAttribute():
             attr = self.attr()
             if attr.isArray():
                 if isinstance(item, int):
@@ -302,10 +296,12 @@ class Nodex(object):
             return Nodex(self.v[item])
 
 
-# TODO: Implement a method that allows you to quickly merge in any of the mathematical operation on an attribute.
+# TODO: (Define behaviour) Implement Nodex.insertInput() so we can easily pass-through a graph of nodes like Pymel
+# TODO: (Define behaviour) Implement method to allow quick insert of any of the mathematical operations on an attribute.
 #       Thus basically grabbing the current outputs for an output and passing them through the newly created node.
-#       Nodex("pSphere1.translateX").mergeInto() or something along those lines
-# TODO: Possibly also mergeInto with a provided input/output so we can easily pass-through a graph of nodes.
+#       Nodex("pSphere1.translateX").mergeInto(Math.sum, with_others) or something along those lines
+#       This would be rather similar behaviour like Pymel.core.Attribute.insertInput() but for outputs.
+#       (Since Nodex' could behave that way it would be a nice unique feature)
 
 
 class Math(object):
@@ -323,7 +319,7 @@ class Math(object):
     divide = partial(nodex.utils.multiplyDivide, operation=2, name="divide")
     power = partial(nodex.utils.multiplyDivide, operation=3, name="power")
     add = partial(nodex.utils.doubleLinear, nodeType="addDoubleLinear", name="add")
-    sum = partial(nodex.utils.plusMinusAverage, dimensions=None, operation=1, name="sum") # TODO: Implement THIS!
+    sum = partial(nodex.utils.plusMinusAverage, dimensions=None, operation=1, name="sum")
     sum1D = partial(nodex.utils.plusMinusAverage, dimensions=1, operation=1, name="sum1D")
     sum2D = partial(nodex.utils.plusMinusAverage, dimensions=2, operation=1, name="sum2D")
     sum3D = partial(nodex.utils.plusMinusAverage, dimensions=3, operation=1, name="sum3D")
@@ -342,13 +338,52 @@ class Math(object):
     lessThan = partial(nodex.utils.condition, operation=4, name="lessThan")
     lessOrEqual = partial(nodex.utils.condition, operation=5, name="lessOrEqual")
 
-# TODO: Implement these methods/nodes (not necessarily in order of importance):
-#Math.blend (=blendColors)
-#Math.setRange
-#Math.contrast
-#Math.reverse
-#Math.stencil
-#Math.overlay (= multiple nodes)
-#Math.vectorProduct
-#Math.angleBetween
-#Math.unitConversion
+
+# TODO: Implement Math methods (not necessarily in order of importance)
+# TODO: Math.blend (=blendColors)
+# TODO: Math.setRange
+# TODO: Math.contrast
+# TODO: Math.reverse
+# TODO: Math.stencil
+# TODO: Math.overlay (= multiple nodes)
+# TODO: Math.vectorProduct
+# TODO: Math.angleBetween
+# TODO: Math.unitConversion
+
+
+# Cache the nodex datatypes in sorted order
+def find_subclasses(module, clazz):
+    import inspect
+    return [cls for name, cls in inspect.getmembers(module) if cls != clazz and
+                                                               inspect.isclass(cls) and
+                                                               issubclass(cls, clazz)]
+
+
+def find_nodex_subclasses_sorted():
+    import nodex.datatypes
+    kls = find_subclasses(nodex.datatypes, Nodex)
+    return list(sorted(kls, key=lambda x: x.priority()))
+
+
+def _getDataTypeFromData(data, datatype=None, cache=[]):
+    """
+        Secretly caches the sorted list in cache upon first run. :O
+    """
+    #TODO: Implement more pythonic/safer caching method, instead of doing the quick 'n' dirty route.
+    if datatype is not None:
+        if not issubclass(datatype, Nodex):
+            raise TypeError("Preferred datatype should be of type Nodex")
+
+        if datatype.isValidData(data):
+            return datatype
+
+    if not cache:
+        cache[:] = find_nodex_subclasses_sorted()
+
+    for cls in cache:
+        if VERBOSE:
+            logger.debug("Checking data {0} against {1}".format(data, cls.__name__))
+        if cls.isValidData(data):
+            if VERBOSE:
+                logger.debug("Matched data {0} with {0}".format(data, cls.__name__))
+            return cls
