@@ -126,18 +126,37 @@ with MayaDeleteNewNodes():
     value = nodex.value()
 ```
 ---
-*Since 0.2.0 Matrix node creations in Maya are possible with Python using Nodex*
+###### Since 0.2.0 Matrix node creations in Maya are possible with Python using Nodex
+
+No more choosing which pill to take; take both red and blue.
 
 ```python
-# The *MayaDeleteNewNodes* context manager is not included in the Nodex package but should be trivial to implement
 matrix = pymel.core.datatypes.Matrix()
 nodex = Nodex(matrix)
 
-# Convert the matrix into the local space of pSphere1
-sphere_matrix = Nodex("pSphere1.worldMatrix[0]")
-local_mat = matrix * sphere_matrix.inverse()
+# Convert the matrix into the local space of object `redPill`
+redPill_matrix = Nodex("redPill.worldMatrix[0]")
+local_mat = matrix * redPill_matrix.inverse()
 
-local_mat.decompose(translate="pSphere2.translate",
-                    rotate="pSphere2.rotate",
-                    scale="pSphere2.scale")
+# Decompose and directly connect to object `bluePill`
+local_mat.decompose(translate="bluePill.translate",
+                    rotate="bluePill.rotate",
+                    scale="bluePill.scale")
+```
+
+Setting up a simple *Matrix constraint* relationship between two objects.
+(This also works if they are NOT under the same parent)
+
+```python
+sel = pymel.core.ls(selection=True)
+target = sel[0]
+src = sel[1] # this will move towards the target
+
+targetMat = Nodex(target.attr("worldMatrix[0]"))
+srcParentInvMat = Nodex(src.attr("parentInverseMatrix[0]"))
+
+localMat = targetMat * srcParentInvMat
+localMat.decompose(translate=src.attr('translate'), 
+                   rotate=src.attr('rotate'),
+                   scale=src.attr('scale'))
 ```
