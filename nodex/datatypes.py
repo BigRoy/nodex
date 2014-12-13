@@ -21,7 +21,7 @@ import maya.cmds
 class Numerical(Nodex):
     _priority = 25
 
-    _numerical_types = frozenset(["int", "float", "bool", "double", "doubleAngle", "time",
+    _attr_types = frozenset(["int", "float", "bool", "double", "doubleAngle", "time",
                            "doubleLinear", "long", "short", "byte", "enum", ])
 
     @staticmethod
@@ -29,7 +29,7 @@ class Numerical(Nodex):
         if attr.isArray() or attr.isCompound():
             return False
 
-        if attr.type() in Numerical._numerical_types:
+        if attr.type() in Numerical._attr_types:
             return True
 
         return False
@@ -139,6 +139,7 @@ class Boolean(Numerical):
 
     def convertData(self, data):
         data = bool(data)
+        return data
 
     @staticmethod
     def default():
@@ -279,17 +280,181 @@ class Array(Nodex):
     # endregion
 
 
-# class Vector(Array):
-#     # TODO: Implement vector math (cross-product, dot-product)
-#     _priority = 50
-#
-#     def cross(self, other):
-#         # TODO: Implement cross product
-#         raise NotImplementedError()
-#
-#     def dot(self, other):
-#         # TODO: Implement dot product
-#         raise NotImplementedError()
+class Vector(Array):
+    _priority = 50
+    _allowed_iterables = (tuple, list)
+    _attr_types = frozenset(["reflectance", "reflectanceRGB", "spectrum", "spectrumRGB",
+                             "float3", "double3", "long3"])
+
+    @staticmethod
+    def validateAttr(attr):
+        if attr.isArray() or attr.isCompound():
+            if nodex.utils.attrDimensions(attr) == 3:
+                return True
+
+        if attr.type() in Vector._attr_types:
+            return True
+
+        return False
+
+    @staticmethod
+    def isValidData(data):
+
+        # attribute
+        if isinstance(data, pymel.core.Attribute):
+            return Vector.validateAttr(data)
+        elif isinstance(data, basestring):
+            attr = pymel.core.Attribute(data)
+            return Vector.validateAttr(attr)
+
+        # matrix data
+        elif isinstance(data, (pymel.core.datatypes.Vector, pymel.core.datatypes.FloatVector,
+                               maya.OpenMaya.MVector, maya.OpenMaya.MFloatVector,
+                               maya.api.OpenMaya.MVector, maya.api.OpenMaya.MFloatVector)):
+            return True
+
+        # list, like [0, 0, 0]
+        elif isinstance(data, Matrix._allowed_iterables) and len(data) == 3:
+            return True
+
+        return False
+
+    def dimensions(self):
+        # The dimensions of a Matrix should always be 16, so we assume it for now
+        # If one wants a 3x3 Matrix implementation one needs to define a new datatype.
+        return 3
+
+    def convertData(self, data):
+        """ Convert the data to a matrix type
+            If the data refers to a Matrix attribute we store the reference directly.
+            Else we store the data as a tuple so we can also hold mixed references like the normal Array datatype.
+        """
+
+        # region attribute
+        if isinstance(data, pymel.core.Attribute):
+            if Vector.validateAttr(data):
+                return data
+        elif isinstance(data, basestring):
+            data = pymel.core.Attribute(data)
+            if Vector.validateAttr(data):
+                return data
+        # endregion
+
+        # region array-data
+        # convert maya.OpenMaya, maya.api.OpenMaya or pymel.core.datatypes Vectors
+        elif isinstance(data, (pymel.core.datatypes.Vector, pymel.core.datatypes.FloatVector,
+                          maya.OpenMaya.MVector, maya.OpenMaya.MFloatVector,
+                          maya.api.OpenMaya.MVector, maya.api.OpenMaya.MFloatVector)):
+            data = tuple(data)
+
+        # convert list to tuple
+        elif isinstance(data, list):
+            data = tuple(data)
+
+        return super(Vector, self).convertData(data)
+        # endregion
+
+    def value(self):
+        v = super(Vector, self).value()
+        return pymel.core.datatypes.Vector(v)
+
+    @staticmethod
+    def default():
+        return pymel.core.datatypes.Vector()
+
+    @staticmethod
+    def _distanceBetween(point1=None, point2=None):
+
+        n = pymel.core.createNode("distanceBetween")
+
+        if point1 is not None:
+            Nodex(point1).connect(n.attr('point1'))
+        if point2 is not None:
+            Nodex(point2).connect(n.attr('point2'))
+
+        return Nodex(n.attr('distance'))
+
+    @staticmethod
+    def _vectorProduct(input1=None, input2=None, matrix=None, operation=None, normalizeOutput=None):
+
+        n = pymel.core.createNode("vectorProduct")
+        if operation is not None:
+            n.attr('operation').set(operation)
+
+        if input1 is not None:
+            Nodex(input1).connect(n.attr('input1'))
+        if input2 is not None:
+            Nodex(input2).connect(n.attr('input2'))
+
+        if matrix is not None: # used for operations: Vector Matrix Product and Point Matrix Product
+            Nodex(matrix).connect(n.attr('matrix'))
+
+        if normalizeOutput is not None and normalizeOutput is not False:
+            Nodex(normalizeOutput).connect(n.attr('normalizeOutput'))
+
+        return Nodex(n.attr('output'))
+
+    @staticmethod
+    def _angleBetween(vector1=None, vector2=None, angle=None, axis=None, euler=None, chainAttr='angle'):
+
+        n = pymel.core.createNode("angleBetween")
+
+        # inputs
+        if vector1 is not None:
+            Nodex(vector1).connect(n.attr('vector1'))
+        if vector2 is not None:
+            Nodex(vector2).connect(n.attr('vector2'))
+
+        # outputs
+        if angle is not None:
+            Nodex(n.attr('angle')).connect(angle)
+        if axis is not None:
+            Nodex(n.attr('axisAngle.axis')).connect(axis)
+        if euler is not None:
+            Nodex(n.attr('euler')).connect(euler)
+
+        return Nodex(n.attr(chainAttr))
+
+    def cross(self, other, normalizeOutput=False):
+        return self._vectorProduct(self, other, operation=2, normalizeOutput=normalizeOutput)
+
+    def dot(self, other, normalizeOutput=False):
+        output = self._vectorProduct(self, other, operation=1, normalizeOutput=normalizeOutput)
+        # The dot product only results in one value, so get the outputX
+        return Nodex(output.node().attr('outputX'))
+
+    def length(self):
+        """ Returns the magnitude of the vector """
+        output = self._distanceBetween(self, point2=(0, 0, 0))
+        output.node().attr('point2').lock()     # lock this input to ensure output stays correct
+        return output
+
+    def distanceTo(self, other):
+        """ Returns the distance between this and another Vector """
+        return self._distanceBetween(self, other)
+
+    def angleTo(self, other, angle=None, axis=None, euler=None, chainAttr='angle'):
+        """ Returns the angle between this and another Vector """
+        return self._angleBetween(self, other, angle=angle, axis=axis, euler=euler, chainAttr=chainAttr)
+
+    def normal(self):
+        """ Return the normalized Vector of this one.
+
+            Once upon a time I thought there was no way to do Vector normalization with a single (built-in) node
+            in Maya, so I wanted to do:
+            - multiplyDivide, plusMinusAverage, multiplyDivide and another multiplyDivide
+            (so square each component, add together, take square root => get length; and divide by the length)
+            OR:
+            - distanceBetween and multiplyDivide
+            (distance from (0.0, 0.0, 0.0) => length; then divide by length)
+            Until I thought of using the 'vectorProduct' node with normalizeOutput set to True.
+            And that's when I finally figured out why there was a 'No operation' setting in the node.
+            So that's the way to go about it.
+            The End.
+        """
+        output = self._vectorProduct(self, input2=None, operation=0, normalizeOutput=True)
+        output.node().attr('input2').lock()     # lock this input since it's not being used anyway
+        return output
 
 
 class Matrix(Array):
@@ -309,7 +474,7 @@ class Matrix(Array):
     _priority = 60
 
     @staticmethod
-    def _isMatrixAttr(attr):
+    def validateAttr(attr):
         """ Workaround for strange Attribute behaviour
 
             There seems to be a bug in pymel (Maya 2015) where getting the type of a matrix attribute, eg. worldMatrix[0]
@@ -347,10 +512,10 @@ class Matrix(Array):
         # attribute
         # TODO: Check what the actual type of a Matrix attribute is and implement support
         if isinstance(data, pymel.core.Attribute):
-            return Matrix._isMatrixAttr(data)
+            return Matrix.validateAttr(data)
         elif isinstance(data, basestring):
             attr = pymel.core.Attribute(data)
-            return Matrix._isMatrixAttr(attr)
+            return Matrix.validateAttr(attr)
 
         # matrix data
         elif isinstance(data, (pymel.core.datatypes.Matrix, pymel.core.datatypes.FloatMatrix,
@@ -382,11 +547,11 @@ class Matrix(Array):
 
         # region attribute
         if isinstance(data, pymel.core.Attribute):
-            if Matrix._isMatrixAttr(data):
+            if Matrix.validateAttr(data):
                 return data
         elif isinstance(data, basestring):
             data = pymel.core.Attribute(data)
-            if Matrix._isMatrixAttr(data):
+            if Matrix.validateAttr(data):
                 return data
         # endregion
 

@@ -80,7 +80,7 @@ class TestNodexTypes(unittest.TestCase):
         self.assertEqual(type(Nodex([10]*10)), nodex.datatypes.Array)
 
         # TODO: Enable Vector type tests when Vector is implemented
-        #self.assertEqual(type(Nodex([1,2,3])), nodex.datatypes.Vector)
+        self.assertEqual(type(Nodex([1,2,3])), nodex.datatypes.Vector)
 
         # matrix
         self.assertEqual(type(Nodex([0]*16)), nodex.datatypes.Matrix)
@@ -226,23 +226,177 @@ class TestNodexMethods(unittest.TestCase):
         self.assertEqual(s.value(), 2.0)
 
         s = Nodex([0, 1, 2]) + Nodex([0, 2, 1])
-        self.assertEqual(s.value(), (0.0, 3.0, 3.0))
+        self.assertEqual(s.value(), pymel.core.datatypes.Vector(0.0, 3.0, 3.0))
         s += Nodex("pSphere1.t")
         mc.xform("pSphere1", t=(0, 0, 0), ws=1)
-        self.assertEqual(s.value(), (0.0, 3.0, 3.0))
+        self.assertEqual(s.value(), pymel.core.datatypes.Vector(0.0, 3.0, 3.0))
 
         mc.xform("pSphere1", t=(-4.5, 7.0, 0.5), ws=1)
-        self.assertEqual(s.value(), (-4.5, 10.0, 3.5))
+        self.assertEqual(s.value(), pymel.core.datatypes.Vector(-4.5, 10.0, 3.5))
 
         mc.xform("pSphere1", t=(-10.0, 5.0, 1000.0), ws=1)
-        self.assertEqual(s.value(), (-10.0, 8.0, 1003.0))
+        self.assertEqual(s.value(), pymel.core.datatypes.Vector(-10.0, 8.0, 1003.0))
 
         v = s.value()
         s -= Nodex(v)
-        self.assertEqual(s.value(), (0.0, 0.0, 0.0))
+        self.assertEqual(s.value(), pymel.core.datatypes.Vector(0.0, 0.0, 0.0))
 
         s += [3, 3, 3]   # implicit conversion to Nodex()
-        self.assertEqual(s.value(), (3.0, 3.0, 3.0))
+        self.assertEqual(s.value(), pymel.core.datatypes.Vector(3.0, 3.0, 3.0))
+
+
+class TestVectorMethods(unittest.TestCase):
+
+    def test_vector_dot(self):
+        v1 = Nodex([1, 0, 0])
+        v2 = Nodex([0, 1, 0])
+        v3 = v1.dot(v2)
+        self.assertEqual(v3.value(), 0.0)
+
+        v1 = Nodex([1, 0, 0])
+        v2 = Nodex([1, 0, 0])
+        v3 = v1.dot(v2)
+        self.assertEqual(v3.value(), 1.0)
+
+        v1 = Nodex([0.707, 0.707, 0])
+        v2 = Nodex([0, 1, 0])
+        v3 = v1.dot(v2)
+        self.assertAlmostEqual(v3.value(), 0.707, places=3)
+
+    def test_vector_cross(self):
+
+        v1 = Nodex([1, 0, 0])
+        v2 = Nodex([0, 1, 0])
+        v3 = v1.cross(v2)
+        self.assertEqual(v3.value(), pymel.core.datatypes.Vector(0, 0, 1))
+
+        v1 = Nodex([1, 0, 0])
+        v2 = Nodex([0, 0, 1])
+        v3 = v1.cross(v2)
+        self.assertEqual(v3.value(), pymel.core.datatypes.Vector(0, -1, 0))
+
+        v1 = Nodex([0, 1, 0])
+        v2 = Nodex([0, 0, 1])
+        v3 = v1.cross(v2)
+        self.assertEqual(v3.value(), pymel.core.datatypes.Vector(1, 0, 0))
+
+        v1 = Nodex([0, 0, 1])
+        v2 = Nodex([0, 1, 0])
+        v3 = v1.cross(v2)
+        self.assertEqual(v3.value(), pymel.core.datatypes.Vector(-1, 0, 0))
+
+        v1 = Nodex([1, 0, 0])
+        v2 = Nodex([0, 0, 1])
+        v3 = v1.cross(v2)
+        v4 = v2.cross(v3)   # this should be v1 again
+        self.assertEqual(v4.value(), pymel.core.datatypes.Vector(v1.value()))
+        v5 = v3.cross(v1)   # this should be v2 again
+        self.assertEqual(v5.value(), pymel.core.datatypes.Vector(v2.value()))
+
+        # crossing two non-normalized vectors
+        # - without normalized output
+        v1 = Nodex([12, 0, 0])
+        v2 = Nodex([0, 14, 0])
+        v3 = v1.cross(v2)
+        self.assertTrue(v3.value().isEquivalent(pymel.core.datatypes.Vector(0, 0, 12*14)))
+        v4 = v1.cross(v2, normalizeOutput=True)
+        self.assertTrue(v4.value().isEquivalent(pymel.core.datatypes.Vector(0, 0, 1)))
+
+    def test_vector_distanceTo(self):
+
+        v1 = Nodex((1, 0, 0))
+        v2 = Nodex((-2, 0, 0))
+        distance = v1.distanceTo(v2)
+        self.assertAlmostEqual(distance.value(), 3.0, places=7)
+
+        v1 = Nodex((0.707, 0.707, 0))
+        v2 = Nodex((-0.707, -0.707, 0))
+        distance = v1.distanceTo(v2)
+        self.assertAlmostEqual(distance.value(), 2.0, places=2)
+
+        v1 = Nodex((1200, 0, 0))
+        v2 = Nodex((-59.6, 0, 0))
+        distance = v1.distanceTo(v2)
+        self.assertAlmostEqual(distance.value(), 1259.6, places=7)
+
+        v1 = Nodex((-123.3, 51.5, 720))
+        v2 = Nodex((-123.3, 51.5, 550))
+        distance = v1.distanceTo(v2)
+        self.assertAlmostEqual(distance.value(), 720-550, places=7)
+
+    def test_vector_angleTo(self):
+
+        v1 = Nodex((1, 0, 0))
+        v2 = Nodex((0, 1, 0))
+        angleTo = v1.angleTo(v2)
+        self.assertAlmostEqual(angleTo.value(), 90.0, places=7)
+
+        v1 = Nodex((1, 0, 0))
+        v2 = Nodex((0.707, 0.707, 0))
+        angleTo = v1.angleTo(v2)
+        self.assertAlmostEqual(angleTo.value(), 45.0, places=7)
+
+        # Check whether non-normalized vectors behave normally
+        v1 = Nodex((100, 0, 0))
+        v2 = Nodex((100, 100, 0))
+        angleTo = v1.angleTo(v2)
+        self.assertAlmostEqual(angleTo.value(), 45.0, places=7)
+
+        # TODO: Implement allowing to pass-through attributes into another Nodex?
+        #v1 = Nodex((1, 0, 0))
+        #v2 = Nodex((0, 1, 0))
+        #axis = Nodex([0, 0, 0])
+        #v1.angleTo(v2, axis=axis)
+        #print axis.value()
+
+    def test_vector_normal(self):
+
+        v1 = Nodex((100, 0, 0))
+        normal = v1.normal()
+        self.assertTrue(normal.value().isEquivalent(pymel.core.datatypes.Vector(1, 0, 0)))
+
+        v1 = Nodex((100, 0, 100))
+        normal = v1.normal()
+        self.assertTrue(normal.value().isEquivalent(pymel.core.datatypes.Vector(0.707, 0, 0.707), tol=1e-3))
+
+        v1 = Nodex((0, -100, 0))
+        normal = v1.normal()
+        self.assertTrue(normal.value().isEquivalent(pymel.core.datatypes.Vector(0, -1, 0)))
+
+        v1 = Nodex((100, -100, -100))
+        normal = v1.normal()
+        self.assertTrue(normal.value().isEquivalent(pymel.core.datatypes.Vector(0.577, -0.577, -0.577), tol=1e-3))
+
+    def test_vector_length(self):
+
+        v1 = Nodex((100, 0, 0))
+        length = v1.length()
+        self.assertAlmostEqual(length.value(), 100.0, places=5)
+
+        v1 = Nodex((0.707, 0, 0.707)) # this is rough approximation of a unit vector
+        length = v1.length()
+        self.assertAlmostEqual(length.value(), 1.0, places=2)
+
+        # Check distance in two ways and check if is equal
+        v1 = Nodex((100, 0, 0))
+        v2 = Nodex((24, 25, 10))
+        diff = v1 - v2
+        distance = diff.length()
+        distance_direct = v1.distanceTo(v2)
+        self.assertAlmostEqual(distance.value(), distance_direct.value(), places=5)
+
+        # Set some random vectors, normalize and check whether length == 1.0
+        v = Nodex((2154.0, 2315.98, -918))
+        normal_length = v.normal().length()
+        self.assertAlmostEqual(normal_length.value(), 1.0, places=5)
+
+        v = Nodex((500, 0.7, 50))
+        normal_length = v.normal().length()
+        self.assertAlmostEqual(normal_length.value(), 1.0, places=5)
+
+        v = Nodex((-4, 9, -7))
+        normal_length = v.normal().length()
+        self.assertAlmostEqual(normal_length.value(), 1.0, places=5)
 
 
 class TestMatrixMethods(unittest.TestCase):
@@ -404,10 +558,6 @@ class TestMatrixMethods(unittest.TestCase):
         r = (0, 0, 0)
         s = (1, 1, 1)
         check_node_vs_composed_matrix(src, t, r, s)
-
-
-
-
 
 
 if __name__ == '__main__':
