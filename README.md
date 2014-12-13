@@ -130,7 +130,7 @@ with MayaDeleteNewNodes():
 
 ### Matrix Datatype
 
-##### (Since 0.2.0) Matrix node creations in Maya are possible with Python using Nodex
+##### (>0.2.0) Matrix node creations in Maya are possible with Python using Nodex
 
 No more choosing which pill to take; take both red and blue.
 
@@ -172,7 +172,7 @@ localMat.decompose(translate=src.attr('translate'),
 
 ### Vector datatype
 
-#### (Since 0.2.1) Vector math in Maya with nodes is possible with Python using Nodex
+##### (>0.2.1) Vector math in Maya with nodes is possible with Python using Nodex
 
 Have a blast *normalizing* your vectors!
 
