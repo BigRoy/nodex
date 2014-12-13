@@ -184,7 +184,7 @@ v = Nodex(vector)
 v = v.normal()
 
 # Let's put that point on a sphere of radius 5
-v *= 5.0
+v *= [5.0, 5.0, 5.0]
 
 # Let's offset it by the translate of another node
 v += Nodex('otherNode.translate')
