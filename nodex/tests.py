@@ -398,6 +398,12 @@ class TestVectorMethods(unittest.TestCase):
         normal_length = v.normal().length()
         self.assertAlmostEqual(normal_length.value(), 1.0, places=5)
 
+        # squared length
+        v = Nodex((-4, 9, -7))
+        lengthSquared = v.length() ^ 2
+        lengthSquaredMethod = v.squareLength()
+        self.assertAlmostEqual(lengthSquared.value(), lengthSquaredMethod.value(), places=5)
+
 
 class TestMatrixMethods(unittest.TestCase):
     def setUp(self):

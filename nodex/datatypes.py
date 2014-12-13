@@ -429,6 +429,12 @@ class Vector(Array):
         output.node().attr('point2').lock()     # lock this input to ensure output stays correct
         return output
 
+    def squareLength(self):
+        """ Returns the square length of the vector """
+        v = self ^ [2.0, 2.0, 2.0]          # square all components
+        v = Math.sum1D(v[0], v[1], v[2])    # sum all components
+        return v
+
     def distanceTo(self, other):
         """ Returns the distance between this and another Vector """
         return self._distanceBetween(self, other)

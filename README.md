@@ -213,6 +213,9 @@ vector.distanceTo(otherVector)
 
 # length of the vector
 vector.length()
+
+# squared length of the vector (uses two nodes)
+vector.squareLength()
 ```
 
 ---
