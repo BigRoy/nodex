@@ -148,9 +148,10 @@ local_mat.decompose(translate="bluePill.translate",
 
 ---
 
-#### Setting up a simple *Matrix constraint* relationship between two objects with Nodex
+##### Setting up a simple *Matrix constraint* relationship between two objects with Nodex
 
-(This also works if they are NOT under the same parent)
+Snap the `src` object to the `target` object. 
+This will also work if they are NOT under the same parent.
 
 ```python
 sel = pymel.core.ls(selection=True)
