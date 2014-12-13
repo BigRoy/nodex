@@ -159,6 +159,16 @@ def condition(firstTerm=None, secondTerm=None, ifTrue=None, ifFalse=None, output
     d = kwargs.pop("dimensions", None)
     output = kwargs.pop("output", None)
 
+    # Ensure inputs are Nodex
+    if firstTerm is not None and not isinstance(firstTerm, Nodex):
+        firstTerm = Nodex(firstTerm)
+    if secondTerm is not None and not isinstance(secondTerm, Nodex):
+        secondTerm = Nodex(secondTerm)
+    if ifTrue is not None and not isinstance(ifTrue, Nodex):
+        ifTrue = Nodex(ifTrue)
+    if ifFalse is not None and not isinstance(ifFalse, Nodex):
+        ifFalse = Nodex(ifFalse)
+
     # Get dimensions from input Nodex
     if d is None:
         d = max(x.dimensions() for x in [firstTerm, secondTerm, ifTrue, ifFalse] if not x is None)
@@ -184,23 +194,23 @@ def condition(firstTerm=None, secondTerm=None, ifTrue=None, ifFalse=None, output
 
 
     if firstTerm is not None:
-        Nodex(firstTerm).connect(n.attr("firstTerm"))
+        firstTerm.connect(n.attr("firstTerm"))
 
     if secondTerm is not None:
-        Nodex(secondTerm).connect(n.attr("secondTerm"))
+        secondTerm.connect(n.attr("secondTerm"))
 
     if ifTrue is not None:
-        Nodex(ifTrue).connect(n.attr("colorIfTrue"))
+        ifTrue.connect(n.attr("colorIfTrue"))
     else:
         n.attr("colorIfTrue").set((1, 1, 1))
 
     if ifFalse is not None:
-        Nodex(ifFalse).connect(n.attr("colorIfFalse"))
+        ifFalse.connect(n.attr("colorIfFalse"))
     else:
         n.attr("colorIfFalse").set((0, 0, 0))
 
     if output is not None:
-        Nodex(ifFalse).connect(outputAttr)
+        ifFalse.connect(outputAttr)
 
     return Nodex(outputAttr)
 

@@ -363,9 +363,10 @@ class Vector(Array):
         return pymel.core.datatypes.Vector()
 
     @staticmethod
-    def _distanceBetween(point1=None, point2=None):
+    def _distanceBetween(point1=None, point2=None, **kwargs):
 
-        n = pymel.core.createNode("distanceBetween")
+        name = kwargs.get('name', 'distanceBetween')
+        n = pymel.core.createNode("distanceBetween", name=name)
 
         if point1 is not None:
             Nodex(point1).connect(n.attr('point1'))
@@ -375,9 +376,11 @@ class Vector(Array):
         return Nodex(n.attr('distance'))
 
     @staticmethod
-    def _vectorProduct(input1=None, input2=None, matrix=None, operation=None, normalizeOutput=None):
+    def _vectorProduct(input1=None, input2=None, matrix=None, operation=None, normalizeOutput=None, **kwargs):
 
-        n = pymel.core.createNode("vectorProduct")
+        name = kwargs.get('name', 'vectorProduct')
+        n = pymel.core.createNode("vectorProduct", name=name)
+
         if operation is not None:
             n.attr('operation').set(operation)
 
@@ -395,9 +398,10 @@ class Vector(Array):
         return Nodex(n.attr('output'))
 
     @staticmethod
-    def _angleBetween(vector1=None, vector2=None, angle=None, axis=None, euler=None, chainAttr='angle'):
+    def _angleBetween(vector1=None, vector2=None, angle=None, axis=None, euler=None, chainAttr='angle', **kwargs):
 
-        n = pymel.core.createNode("angleBetween")
+        name = kwargs.get('name', 'angleBetween')
+        n = pymel.core.createNode("angleBetween", name=name)
 
         # inputs
         if vector1 is not None:
@@ -416,16 +420,16 @@ class Vector(Array):
         return Nodex(n.attr(chainAttr))
 
     def cross(self, other, normalizeOutput=False):
-        return self._vectorProduct(self, other, operation=2, normalizeOutput=normalizeOutput)
+        return self._vectorProduct(self, other, operation=2, normalizeOutput=normalizeOutput, name="vectorCross")
 
     def dot(self, other, normalizeOutput=False):
-        output = self._vectorProduct(self, other, operation=1, normalizeOutput=normalizeOutput)
+        output = self._vectorProduct(self, other, operation=1, normalizeOutput=normalizeOutput, name="vectorDot")
         # The dot product only results in one value, so get the outputX
         return Nodex(output.node().attr('outputX'))
 
     def length(self):
         """ Returns the magnitude of the vector """
-        output = self._distanceBetween(self, point2=(0, 0, 0))
+        output = self._distanceBetween(self, point2=(0, 0, 0), name="vectorLength")
         output.node().attr('point2').lock()     # lock this input to ensure output stays correct
         return output
 
@@ -458,7 +462,7 @@ class Vector(Array):
             So that's the way to go about it.
             The End.
         """
-        output = self._vectorProduct(self, input2=None, operation=0, normalizeOutput=True)
+        output = self._vectorProduct(self, input2=None, operation=0, normalizeOutput=True, name="vectorNormalize")
         output.node().attr('input2').lock()     # lock this input since it's not being used anyway
         return output
 

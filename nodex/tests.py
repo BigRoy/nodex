@@ -244,6 +244,39 @@ class TestNodexMethods(unittest.TestCase):
         s += [3, 3, 3]   # implicit conversion to Nodex()
         self.assertEqual(s.value(), pymel.core.datatypes.Vector(3.0, 3.0, 3.0))
 
+    def test_iter(self):
+
+        # iterable
+        iterable = [0, 0, 0.0, True, 0, 0]
+        n = Nodex(iterable)
+        for nodex, real_value in zip(n, iterable):
+            self.assertEqual(nodex.value(), real_value)
+
+        iterable = [-19, False, 0.0]
+        n = Nodex(iterable)
+        for nodex, real_value in zip(n, iterable):
+            self.assertEqual(nodex.value(), real_value)
+
+    def test_slicing(self):
+        # slicing
+        iterable = [-19, False, 0.0]
+        n = Nodex(iterable)
+        self.assertEqual(n[0:].dimensions(), len(iterable[0:]))
+        self.assertEqual(n[1:].dimensions(), len(iterable[1:]))
+        self.assertEqual(n[2:].dimensions(), len(iterable[2:]))
+
+        iterable = [0, 0, 0.0, True, 0, 0, 21, 12, 59, 10, 19, -12, 4, 5, 9, 0]
+        n = Nodex(iterable)
+        self.assertEqual(n[0:].dimensions(), len(iterable[0:]))
+        self.assertEqual(n[1:].dimensions(), len(iterable[1:]))
+        self.assertEqual(n[2:].dimensions(), len(iterable[2:]))
+
+    def test_len(self):
+        # __len__ and dimensions
+        n = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 123, 3213, 125, 245]
+        n = Nodex(n)
+        self.assertEqual(n.dimensions(), len(n))
+
 
 class TestVectorMethods(unittest.TestCase):
 
@@ -565,6 +598,30 @@ class TestMatrixMethods(unittest.TestCase):
         s = (1, 1, 1)
         check_node_vs_composed_matrix(src, t, r, s)
 
+class TestExampleGraphs(unittest.TestCase):
+    def test_scene1(self):
+        mc.file(new=True, force=True)
+        sphere1 = pymel.core.polySphere()[0]
+        sphere1.setTranslation((10, 0, 0))
+        sphere2 = pymel.core.polySphere()[0]
+
+        print sphere1.getTranslation()
+
+        from nodex.core import Nodex, Math
+
+        # free position
+        target = Nodex('pSphere1.translate')
+
+        # limited position (5.0 units from origin)
+        targetMax = target.normal() * 5.0
+
+        # add a condition (so we use the limited targetMax position if the target is further away than 5.0 units)
+        distanceFromOrigin = target.length()
+        conditionOutput = Math.greaterThan(distanceFromOrigin, 5.0, ifTrue=targetMax, ifFalse=target)
+
+        conditionOutput.connect('pSphere2.translate')
+
+        print sphere2.getTranslation()
 
 if __name__ == '__main__':
     unittest.main()

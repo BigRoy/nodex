@@ -20,27 +20,26 @@ class UndefinedNodexError(RuntimeError):
 
 
 class Nodex(object):
-    """
-    Abstract class that is base for all Nodex datatype classes.
+    """ Abstract class that is base for all Nodex datatype classes.
 
     The names of nodes and attributes can be passed to this class, and the appropriate subclass will be determined.
     Also you can pass in a value based on certain datatypes to allow for automatic conversion (eg. Matrices)
     The conversion are based on definitions defined in `nodex.datatypes`
 
     If the value can't be converted to a valid data type an error will be raised.
-
-    (For now loosely based on the implementation of PyNode in pymel)
+    This behaviour is similar to Pymel's implementation of the `pymel.core.PyNode`
     """
-    _priority = -100
+    _priority = 999999
 
     @classmethod
     def priority(cls):
+        """
+        :return: The priority for lookup/check against data whether it should become this datatype. Lower is earlier.
+        """
         return cls._priority
 
     def __new__(cls, *args, **kwargs):
         """ Catch all creation for Nodex classes, creates correct class depending on type passed. """
-        import datatypes
-
         data = None
         dt = kwargs.get("type", None)
 
@@ -107,7 +106,7 @@ class Nodex(object):
     def convertData(self, data):
         """
             The returned type must be something that can be validly used as a value again for convertData, plus
-            should be settable to a PyMel attribute (that relates to the type)
+            should be settable to a PyMel attribute (that relates to the datatype)
         """
         pass
 
@@ -117,34 +116,16 @@ class Nodex(object):
         :return: Default value for this datatype. The returned type must be something that can be validly converted by
                  this datatype in 'self.convertData'
         """
-        return None
-
-    def value(self):
-        if self.isAttribute():
-            return self.v.get()
-        elif isinstance(self.v, tuple):
-            return tuple(x.value() for x in self.v)
-        else:
-            return self.v
-
-    # region nodex value-reference methods
-    @property
-    def v(self):
-        """ Short convenience property to get to the Nodex's referenced content """
-        return self._data
-
-    def data(self):
-        return self._data
+        raise NotImplementedError()
 
     def value(self):
         data = self._data
         if self.isSingleAttribute():
             return data.get()
-        elif isinstance(self.v, tuple):
+        elif isinstance(data, tuple):
             return tuple(x.get() if isinstance(x, pymel.core.Attribute) else x.value() for x in data)
         else:
             return data
-    # endregion
 
     # region nodex combined methods (whilst referencing: attribute || single numeric || array)
     def dimensions(self):
@@ -212,7 +193,7 @@ class Nodex(object):
             raise RuntimeError("Can't clear the value for: {0}".format(self))
         self.setReference(defaultValue)
 
-    def connect(self, other, allowGrow=False, clearLarger=True):
+    def connect(self, other, allowGrow=True, clearLarger=False):
         """
             Connects one Nodex attribute/value to another attribute.
             This method ensures to perform a connection even if the dimensions between the Nodex attributes differs.
@@ -255,29 +236,23 @@ class Nodex(object):
         elif dim == 1 and allowGrow:   # --> otherDim != 1 and otherDim > 1
             for i in range(otherDim):
                 self.connect(other[i])
-                logger.warning('Connected single attribute {0} to larger attribute {1}.'
-                               'Attribute connected to all inputs of larger attribute'.format(
-                               self, other))
+            logger.debug('Connected single attribute {0} to larger attribute {1}. '
+                           'Attribute connected to all inputs of larger attribute'.format(
+                           self, other))
             return otherDim
         elif otherDim < dim:
             self[:otherDim].connect(other)
-            logger.warning('Truncated attribute {0} to connect to smaller attribute {1}.'.format(
+            logger.debug('Truncated attribute {0} to connect to smaller attribute {1}.'.format(
                             self, other))
             return otherDim
         elif otherDim > dim:
             resultDim = self.connect(other[:dim])  # connect to truncated length of other
-            logger.warning('Connected smaller attibute {0} to larger attibute {0}.')
+            logger.warning('Connected smaller attibute {0} to larger attibute {1}.'.format(self, other))
             if clearLarger:
                 other[dim+1:].clearValue()   # clear remaining values
-                logger.warning('clearLarger parameter is True, remaining values are cleared.'.format(self, other))
+                logger.debug('clearLarger parameter is True, remaining values are cleared.')
             return resultDim
     # endregion
-
-    def __str__(self):
-        return "{0}({1})".format(self.__class__.__name__, self.v)
-
-    def __repr__(self):
-        return "{0}({1})".format(self.__class__.__name__, self.v)
 
     def __getitem__(self, item):
         if self.isSingleAttribute():
@@ -291,9 +266,45 @@ class Nodex(object):
                 return Nodex(attr.children()[item])
 
         if isinstance(item, slice):
-            return Nodex(self.v[item])
+            return Nodex(self._data[item])
         elif isinstance(item, int):
-            return Nodex(self.v[item])
+            return Nodex(self._data[item])
+
+    def __len__(self):
+        """ Returns the dimensions of this Nodex """
+        return self.dimensions()
+
+    def __iter__(self):
+        """ Iterate over the elements in this Nodex """
+        for x in xrange(len(self)):
+            yield self[x]
+
+    def __str__(self):
+        return "{0}({1})".format(self.__class__.__name__, self._data)
+
+    def __repr__(self):
+        return "{0}({1})".format(self.__class__.__name__, self._data)
+
+    # region override right hand operators
+    def __radd__(self, other):
+        return Nodex(other) + self
+
+    def __rsub__(self, other):
+        return Nodex(other) - self
+
+    def __rmul__(self, other):
+        return Nodex(other) * self
+
+    def __rdiv__(self, other):
+        return Nodex(other) / self
+
+    # def __rmod__(self, other):
+    #     return Nodex(other) % self
+
+    def __rpow__(self, other):
+        return Nodex(other ^ self)
+    # endregion
+
 
 
 # TODO: (Define behaviour) Implement Nodex.insertInput() so we can easily pass-through a graph of nodes like Pymel
