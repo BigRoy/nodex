@@ -125,8 +125,10 @@ with MayaDeleteNewNodes():
     nodex = (Nodex(1) + Nodex("pSphere1.translateX")) / Nodex("pSphere2.translateY")
     value = nodex.value()
 ```
+
 ---
-###### Since 0.2.0 Matrix node creations in Maya are possible with Python using Nodex
+
+##### Since 0.2.0 Matrix node creations in Maya are possible with Python using Nodex
 
 No more choosing which pill to take; take both red and blue.
 
@@ -144,7 +146,10 @@ local_mat.decompose(translate="bluePill.translate",
                     scale="bluePill.scale")
 ```
 
-Setting up a simple *Matrix constraint* relationship between two objects.
+---
+
+#### Setting up a simple *Matrix constraint* relationship between two objects with Nodex
+
 (This also works if they are NOT under the same parent)
 
 ```python
