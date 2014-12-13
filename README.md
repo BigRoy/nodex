@@ -166,3 +166,49 @@ localMat.decompose(translate=src.attr('translate'),
                    rotate=src.attr('rotate'),
                    scale=src.attr('scale'))
 ```
+---
+
+##### Since 0.2.1 Vector math in Maya with nodes is possible with Python using Nodex
+
+Have a blast *normalizing* your vectors!
+
+```python
+vector = pymel.core.datatypes.Vector(10, 10, 0)
+v = Nodex(vector)
+
+# Let's get a point on the unit sphere.
+v = v.normal()
+
+# Let's put that point on a sphere of radius 5
+v *= 5.0
+
+# Let's offset it by the translate of another node
+v += Nodex('otherNode.translate')
+
+# And use it to drive this node.
+v.connect('thisNode.translate')
+```
+
+##### The available methods for the Vector datatype are (outside of those inherited from Array):
+
+```python
+# cross product with another vector
+vector.cross(otherVector) 
+
+# dot product with another vector
+vector.dot(otherVector) 
+
+# normalize the vector
+vector.normal()
+
+# angle between two vectors
+vector.angleTo(otherVector)
+
+# distance between two vectors (as points)
+vector.distanceTo(otherVector)
+
+# length of the vector
+vector.length()
+```
+
+---
