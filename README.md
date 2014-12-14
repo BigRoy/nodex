@@ -5,7 +5,7 @@ node connections in Maya through Python scripting. The ease of access and method
 will help to write readable and maintainable code for node based graphs that require
 a lot of mathematical processing.
 
-Besides the description/documentation below a (currently experimental documentation) can be found at:
+Besides the description/documentation below a (currently experimental) documentation can be found at:
 
 - [http://www.colorbleed.nl/docs/nodex/master/](http://www.colorbleed.nl/docs/nodex/master/)
 
