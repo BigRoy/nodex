@@ -5,6 +5,10 @@ node connections in Maya through Python scripting. The ease of access and method
 will help to write readable and maintainable code for node based graphs that require
 a lot of mathematical processing.
 
+Besides the description/documentation below a (currently experimental documentation) can be found at:
+
+- (colorbleed.nl/docs/nodex/master/)[colorbleed.nl/docs/nodex/master/]
+
 ## Node expressions for Maya
 
 The process works by using an object called the ``Nodex``.

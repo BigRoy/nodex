@@ -77,6 +77,13 @@ def plusMinusAverage(*args, **kwargs):
 
 def multiplyDivide(input1=None, input2=None, output=None, **kwargs):
     from nodex.core import Nodex
+
+    # Ensure nodex inputs
+    if input1 is not None and not isinstance(input1, Nodex):
+        input1 = Nodex(input1)
+    if input2 is not None and not isinstance(input2, Nodex):
+        input2 = Nodex(input2)
+
     o = kwargs.pop("operation", 1)
     name = kwargs.pop("name", "multiplyDivide")
 
@@ -103,7 +110,7 @@ def multiplyDivide(input1=None, input2=None, output=None, **kwargs):
     for attr, inputValue in [(input1Attr, input1),
                              (input2Attr, input2)]:
         if inputValue is not None:
-            Nodex(inputValue).connect(n.attr(attr))
+            inputValue.connect(n.attr(attr))
 
     if output is not None:
         Nodex(n.attr(outputAttr)).connect(output)

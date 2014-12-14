@@ -98,14 +98,11 @@ class TestNodexTypes(unittest.TestCase):
 
 class TestNodexMethods(unittest.TestCase):
     def setUp(self):
-        # TODO: Add little prompt dialog that this will force a new scene to open
-        #       Thus user might lose current work. :)
-        #       Basically prompt to SAVE!
         mc.file(new=True, force=True)
         mc.polySphere()  # "pSphere1"
 
     def test_multiplyDivide(self):
-        # TODO: This will fail. Implement multiplyDivide correctly.
+        # TODO: This might fail on arrays? Implement multiplyDivide correctly if still buggy.
         # Current issue is with 'isAttribute()' implementation on Arrays.
         result = nodex.datatypes.Float() * nodex.datatypes.Integer()
         self.assertEqual(result.value(), 0.0)
@@ -278,6 +275,27 @@ class TestNodexMethods(unittest.TestCase):
         self.assertEqual(n.dimensions(), len(n))
 
 
+class TestNumericalMethods(unittest.TestCase):
+    def test_abs(self):
+        v = Nodex(-15.0)
+        v = Math.abs(v)
+        self.assertEqual(v.value(), 15)
+
+        v = Nodex([-23, -100, -45])
+        v = Math.abs(v)
+        self.assertTrue(v.value().isEquivalent(pymel.core.datatypes.Vector(23, 100, 45)))
+
+        v = Nodex([12.5, -9999, -9.9])
+        v = Math.abs(v)
+        print v.value()
+        self.assertTrue(v.value().isEquivalent(pymel.core.datatypes.Vector(12.5, 9999, 9.9), tol=0.01))
+
+        # TODO: Implement fix for this one. :)
+        #v = Nodex([-0.1, -18.1])
+        #v = Math.abs(v)
+        #self.assertTrue(v.value().isEquivalent((0.1, 18.1)))
+
+
 class TestVectorMethods(unittest.TestCase):
 
     def test_vector_dot(self):
@@ -440,9 +458,6 @@ class TestVectorMethods(unittest.TestCase):
 
 class TestMatrixMethods(unittest.TestCase):
     def setUp(self):
-        # TODO: Add little prompt dialog that this will force a new scene to open
-        #       Thus user might lose current work. :)
-        #       Basically prompt to SAVE!
         mc.file(new=True, force=True)
 
     def test_matrix_init(self):
@@ -597,6 +612,7 @@ class TestMatrixMethods(unittest.TestCase):
         r = (0, 0, 0)
         s = (1, 1, 1)
         check_node_vs_composed_matrix(src, t, r, s)
+
 
 class TestExampleGraphs(unittest.TestCase):
     def test_scene1(self):

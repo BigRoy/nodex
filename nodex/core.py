@@ -15,7 +15,8 @@ import nodex.utils
 VERBOSE = False
 
 
-class UndefinedNodexError(RuntimeError):
+class UndefinedNodexError(TypeError):
+    """ Error that is raised when the Nodex can't be defined with a relevant datatype to the passed in data. """
     pass
 
 
@@ -316,6 +317,9 @@ class Nodex(object):
 
 
 class Math(object):
+    """
+        The Math class holds many staticmethods for generic mathematical functionality that can operate on a Nodex.
+    """
     @staticmethod
     def bimath(self, other, func):
         """ Convenience method for the special methods like __add__, __sub__, etc. """
@@ -348,6 +352,14 @@ class Math(object):
     greaterOrEqual = partial(nodex.utils.condition, operation=3, name="greaterOrEqual")
     lessThan = partial(nodex.utils.condition, operation=4, name="lessThan")
     lessOrEqual = partial(nodex.utils.condition, operation=5, name="lessOrEqual")
+
+    @staticmethod
+    def abs(nodex, name="abs", dimensions=None):
+        pow_result = Math.power(nodex, 2.0, name="{0}_pow".format(name))
+        pow_result.node().attr("input2").lock()     # lock this attribute to be safe
+        sqrt_result = Math.power(pow_result, 0.5, name="{0}_sqrt".format(name))
+        sqrt_result.node().attr("input2").lock()    # lock this attribute to be safe
+        return sqrt_result
 
 
 # TODO: Implement Math methods (not necessarily in order of importance)

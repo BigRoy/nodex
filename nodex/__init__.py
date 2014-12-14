@@ -13,8 +13,8 @@
 
     http://www.colorbleed.nl/
 
-    @date: May 20th, 2014
-    @version: 0.20.1
+    @date: December 14th, 2014
+    @version: 0.2.1
     @author: Roy Nieterau (roy@colorbleed.nl)
 """
 
@@ -22,5 +22,3 @@ from version import *
 
 __author__ = "Roy Nieterau"
 __all__ = ['core', 'datatypes']
-
-import unittest

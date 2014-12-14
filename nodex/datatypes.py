@@ -1,7 +1,8 @@
 """
-    Testing out an object oriented way of how to implement support for other datatypes (like Matrices)
-    without breaking the implementation of the Nodex. The idea is to make the Nodex object a lot more
-    abstract and extend its use with plug-in datatypes.
+    The datatypes supported by the Nodex factory are defined by subclasses of the Nodex that validate the data
+    and oonvert the input data when required.
+
+    By looking at the datatype documentation you're able to have a look at what methods/functionality they provide.
 """
 from core import Nodex, Math
 import nodex.utils
@@ -124,6 +125,9 @@ class Numerical(Nodex):
     def __le__(self, other):
         return Math.bimath(self, other, func=Math.lessOrEqual)
 
+    def abs(self, **kwargs):
+        return Math.abs(self, **kwargs)
+
     # endregion
 
 
@@ -177,9 +181,9 @@ class Float(Numerical):
 
 
 class Array(Nodex):
-    """ The array DataType is rather complex since it can hold a variety of DataTypes.
+    """ The `Array` datatype is rather complex since itself holds elements that are converted to other datatypes.
 
-        The array can only hold elements with a dimension of one. So it will not hold a nested list.
+        The `Array` can only hold elements with a dimension of one. So it will not hold a nested list.
     """
     _priority = 100
 
@@ -279,6 +283,9 @@ class Array(Nodex):
         return Math.bimath(self, other, func=Math.lessOrEqual)
     # endregion
 
+    def abs(self, **kwargs):
+        return Math.abs(self, **kwargs)
+
 
 class Vector(Array):
     _priority = 50
@@ -325,11 +332,6 @@ class Vector(Array):
         return 3
 
     def convertData(self, data):
-        """ Convert the data to a matrix type
-            If the data refers to a Matrix attribute we store the reference directly.
-            Else we store the data as a tuple so we can also hold mixed references like the normal Array datatype.
-        """
-
         # region attribute
         if isinstance(data, pymel.core.Attribute):
             if Vector.validateAttr(data):
@@ -420,47 +422,61 @@ class Vector(Array):
         return Nodex(n.attr(chainAttr))
 
     def cross(self, other, normalizeOutput=False):
+        """ Returns the cross product of this and another `Vector`.
+
+        :param other: The other vector
+        :param normalizeOutput: If True normalizes the output Vector.
+        :return: The cross product
+        :rtype: :class:`nodex.datatypes.Vector`
+        """
         return self._vectorProduct(self, other, operation=2, normalizeOutput=normalizeOutput, name="vectorCross")
 
     def dot(self, other, normalizeOutput=False):
+        """ Returns the dot product of this and another `Vector`.
+
+        :param other: The other vector
+        :param normalizeOutput: If True normalizes the output Vector.
+        :return: The dot product
+        :rtype: :class:`nodex.datatypes.Vector`
+        """
         output = self._vectorProduct(self, other, operation=1, normalizeOutput=normalizeOutput, name="vectorDot")
         # The dot product only results in one value, so get the outputX
         return Nodex(output.node().attr('outputX'))
 
     def length(self):
-        """ Returns the magnitude of the vector """
+        """ Returns the magnitude of the vector
+
+            :rtype: :class:`nodex.datatypes.Float`"""
         output = self._distanceBetween(self, point2=(0, 0, 0), name="vectorLength")
         output.node().attr('point2').lock()     # lock this input to ensure output stays correct
         return output
 
     def squareLength(self):
-        """ Returns the square length of the vector """
+        """ Returns the square length of the vector
+
+            :rtype: :class:`Float`"""
         v = self ^ [2.0, 2.0, 2.0]          # square all components
         v = Math.sum1D(v[0], v[1], v[2])    # sum all components
         return v
 
     def distanceTo(self, other):
-        """ Returns the distance between this and another Vector """
+        """ Returns the distance between this and another `Vector`.
+
+            :rtype: :class:`nodex.datatypes.Float`
+        """
         return self._distanceBetween(self, other)
 
     def angleTo(self, other, angle=None, axis=None, euler=None, chainAttr='angle'):
-        """ Returns the angle between this and another Vector """
+        """ Returns the angle between this and another `Vector`.
+
+            :rtype: :class:`nodex.datatypes.Float`
+        """
         return self._angleBetween(self, other, angle=angle, axis=axis, euler=euler, chainAttr=chainAttr)
 
     def normal(self):
-        """ Return the normalized Vector of this one.
+        """ Return the normalized `Vector` of this one.
 
-            Once upon a time I thought there was no way to do Vector normalization with a single (built-in) node
-            in Maya, so I wanted to do:
-            - multiplyDivide, plusMinusAverage, multiplyDivide and another multiplyDivide
-            (so square each component, add together, take square root => get length; and divide by the length)
-            OR:
-            - distanceBetween and multiplyDivide
-            (distance from (0.0, 0.0, 0.0) => length; then divide by length)
-            Until I thought of using the 'vectorProduct' node with normalizeOutput set to True.
-            And that's when I finally figured out why there was a 'No operation' setting in the node.
-            So that's the way to go about it.
-            The End.
+            :rtype: :class:`nodex.datatypes.Vector`
         """
         output = self._vectorProduct(self, input2=None, operation=0, normalizeOutput=True, name="vectorNormalize")
         output.node().attr('input2').lock()     # lock this input since it's not being used anyway
@@ -487,17 +503,17 @@ class Matrix(Array):
     def validateAttr(attr):
         """ Workaround for strange Attribute behaviour
 
-            There seems to be a bug in pymel (Maya 2015) where getting the type of a matrix attribute, eg. worldMatrix[0]
-            just after creating a node (when attribute hasn't been used yet) will result in 'attr.type()' returning
-            None. Nevertheless maya.cmds.getAttr(attr, type=1) returns 'matrix' correctly.
-            Note: After using maya.cmds.getAttr(attr, type=1) once on that attribute it will somehow behave correctly
-                  in pymel as well.
+        There seems to be a bug in pymel (Maya 2015) where getting the type of a matrix attribute, eg. worldMatrix[0]
+        just after creating a node (when attribute hasn't been used yet) will result in 'attr.type()' returning
+        None. Nevertheless maya.cmds.getAttr(attr, type=1) returns 'matrix' correctly.
+        Note: After using maya.cmds.getAttr(attr, type=1) once on that attribute it will somehow behave correctly
+              in pymel as well.
 
-            Then there's also the nitpicky behaviour of Matrix attributes that Maya will never give you the type of the
-            attribute unless it's been set before. Otherwise it'll result in 'None' as type.
-            (eg. This happens on multMatrix.matrixIn[0])
+        Then there's also the nitpicky behaviour of Matrix attributes that Maya will never give you the type of the
+        attribute unless it's been set before. Otherwise it'll result in 'None' as type.
+        (eg. This happens on multMatrix.matrixIn[0])
 
-            :type attr: pymel.core.Attribute
+        :type attr: pymel.core.Attribute
         """
         if isinstance(attr, pymel.core.Attribute):
             attr_name = attr.name()
@@ -550,10 +566,9 @@ class Matrix(Array):
         return 16
 
     def convertData(self, data):
-        """ Convert the data to a matrix type
-            If the data refers to a Matrix attribute we store the reference directly.
-            Else we store the data as a tuple so we can also hold mixed references like the normal Array datatype.
-        """
+        # Convert the data to a matrix type
+        # If the data refers to a Matrix attribute we store the reference directly.
+        # Else we store the data as a tuple so we can also hold mixed references like the normal Array datatype.
 
         # region attribute
         if isinstance(data, pymel.core.Attribute):
@@ -614,7 +629,7 @@ class Matrix(Array):
     def decompose(self, translate=None, rotate=None, scale=None, shear=None, quat=None, chainAttr="outputTranslate"):
         """ Decomposes a Matrix into it's translate, rotate (euler and quat), scale, shear values.
 
-        :rtype: Vector
+        :rtype: :class:`nodex.datatypes.Vector`
         """
         nodex.utils.ensurePluginsLoaded(self._plugins)
         decomposeNode = pymel.core.createNode("decomposeMatrix")
@@ -642,7 +657,7 @@ class Matrix(Array):
 
         :param scale: Scale factor on input matrix
         :return: The 'outMatrix' attribute as Nodex
-        :rtype: Matrix
+        :rtype: :class:`nodex.datatypes.Matrix`
         """
         # no plug-in required (tested maya 2015)
         # nodex.utils.ensurePluginsLoaded(self._plugins)
@@ -659,7 +674,8 @@ class Matrix(Array):
         """ Returns the Nodex for the outputMatrix attribute for the inverse of this Matrix
 
             Uses the `inverseMatrix` node from the `matrixNodes` plug-in in Maya.
-            :rtype: Matrix
+
+            :rtype: :class:`nodex.datatypes.Matrix`
         """
         nodex.utils.ensurePluginsLoaded(self._plugins)
         n = pymel.core.createNode("inverseMatrix")
@@ -670,7 +686,8 @@ class Matrix(Array):
         """ Returns the Nodex for the outputMatrix attribute for the transpose of this Matrix
 
             Uses the `transposeMatrix` node from the `matrixNodes` plug-in in Maya.
-            :rtype: Matrix
+
+            :rtype: :class:`nodex.datatypes.Matrix`
         """
         nodex.utils.ensurePluginsLoaded(self._plugins)
         n = pymel.core.createNode("transposeMatrix")
@@ -681,7 +698,8 @@ class Matrix(Array):
         """ Cache a matrix.
 
             Uses the `holdMatrix` node built-in from Maya.
-            :rtype: Matrix
+
+            :rtype: :class:`nodex.datatypes.Matrix`
         """
         n = pymel.core.createNode("holdMatrix")
         self.connect(n.attr("inMatrix"))
@@ -692,8 +710,8 @@ class Matrix(Array):
 
             Uses the `multMatrix` node from the `matrixNodes` plug-in in Maya.
 
-            :type args: Matrix
-            :rtype: Matrix
+            :type *args: :class:`nodex.datatypes.Matrix`
+            :rtype: :class:`nodex.datatypes.Matrix`
         """
         nodex.utils.ensurePluginsLoaded(self._plugins)
 
@@ -715,7 +733,9 @@ class Matrix(Array):
         return Nodex(n.attr("matrixSum"))
 
     def __mul__(self, other):
+        """ Returns this matrix multiplied with another."""
         return self.multiply(other)
+
 
 # class Quaternion(Array):
 #     # TODO: Implement quaternion
