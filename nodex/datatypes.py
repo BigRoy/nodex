@@ -4,22 +4,36 @@
 
     By looking at the datatype documentation you're able to have a look at what methods/functionality they provide.
 """
-from core import Nodex, Math
-import nodex.utils
-from functools import partial
+
+# standard library
+import itertools
+import logging
+logger = logging.getLogger(__name__)
+
+# maya library
 import pymel.core
 import pymel.core.datatypes
 import maya.OpenMaya
 import maya.api.OpenMaya
-import itertools
 import maya.cmds
 
-# TODO: It's possibly simpler to remove the either convertData or isValidData method and create a single method that \
+# local library
+import nodex.utils
+from core import Nodex, Math
+
+# TODO: It's possibly simpler to remove the either convertData or isValidData method and create a single method that
 #       will return converted data but raise an InvalidDataError if it doesn't. This will reduce code duplicity, plus
 #       is likely a tiny bit faster.
 
 
 class Numerical(Nodex):
+    """ The Numerical datatype is the base class for all single numerical values (eg. `Float`, `Integer`, `Boolean`).
+
+
+        .. note:: Currently this is also the class that will be instantiated when reference an attribute of a single
+                  numerical value (since Float/Integer/Boolean haven't been implemented like that as of yet).
+                  Nevertheless all those classes should behave as expected.
+    """
     _priority = 25
 
     _attr_types = frozenset(["int", "float", "bool", "double", "doubleAngle", "time",
@@ -126,12 +140,27 @@ class Numerical(Nodex):
         return Math.bimath(self, other, func=Math.lessOrEqual)
 
     def abs(self, **kwargs):
+        """ Returns the absolute value of this value.
+
+            :rtype: :class:`nodex.datatypes.Float`
+        """
         return Math.abs(self, **kwargs)
+
+    def sign(self, **kwargs):
+        """ Returns whether this value is greater or equal to zero.
+
+            :rtype: :class:`nodex.datatypes.Float`
+        """
+        return Math.greaterOrEqual(self, 0.0)
 
     # endregion
 
 
 class Boolean(Numerical):
+    """
+        The `Boolean` datatype represents a single True/False value where the given data is either a Python `bool`
+        if it's referencing a value or a maya boolean attribute if it references an attribute.
+    """
     _priority = 5
 
     @staticmethod
@@ -244,21 +273,27 @@ class Array(Nodex):
 
     # region special methods override: mathematical operators
     def __add__(self, other):
+        """ Add all individual components of this array to the other Nodex """
         return Math.bimath(self, other, func=Math.sum)
 
     def __sub__(self, other):
+        """ Subtract all individual components of this array by the other Nodex """
         return Math.bimath(self, other, func=Math.subtract)
 
     def __mul__(self, other):
+        """ Multiply all individual components of this array with the other Nodex """
         return Math.bimath(self, other, func=Math.multiply)
 
     def __xor__(self, other):
+        """ Square all individual components of this array by the other Nodex """
         return Math.bimath(self, other, func=Math.power)
 
     def __pow__(self, other):
+        """ Square all individual components of this array by the other Nodex """
         return Math.bimath(self, other, func=Math.power)
 
     def __div__(self, other):
+        """ Divide all individual components of this array by the other Nodex """
         return Math.bimath(self, other, func=Math.divide)
     #endregion
 
@@ -288,6 +323,9 @@ class Array(Nodex):
 
 
 class Vector(Array):
+    """
+        Vectorsssss
+    """
     _priority = 50
     _allowed_iterables = (tuple, list)
     _attr_types = frozenset(["reflectance", "reflectanceRGB", "spectrum", "spectrumRGB",
@@ -491,7 +529,10 @@ class Matrix(Array):
         Matrix in pymel.core.datatypes, a list/tuple of 16 elements, or a nested listed of 4x4. See the `isValidData`
         staticmethod.
 
-        Unlike the Array datatype the Matrix can be initialized with a nested list/datatype, that is a Matrix
+        Unlike the Array datatype the Matrix can be initialized with a nested list/datatype, that is a Matrix.
+
+        .. note:: Some methods on the Matrix datatype will try to quietly load the `matrixNodes` plug-in built-in with
+                  ensure the required nodes are available.
     """
     _plugins = ["matrixNodes"]
     _allowed_iterables = (tuple, list)
@@ -506,8 +547,9 @@ class Matrix(Array):
         There seems to be a bug in pymel (Maya 2015) where getting the type of a matrix attribute, eg. worldMatrix[0]
         just after creating a node (when attribute hasn't been used yet) will result in 'attr.type()' returning
         None. Nevertheless maya.cmds.getAttr(attr, type=1) returns 'matrix' correctly.
-        Note: After using maya.cmds.getAttr(attr, type=1) once on that attribute it will somehow behave correctly
-              in pymel as well.
+
+        .. note:: After using maya.cmds.getAttr(attr, type=1) once on that attribute it will somehow behave correctly
+                  in pymel as well.
 
         Then there's also the nitpicky behaviour of Matrix attributes that Maya will never give you the type of the
         attribute unless it's been set before. Otherwise it'll result in 'None' as type.
@@ -653,7 +695,7 @@ class Matrix(Array):
     def passMatrix(self, scale=None):
         """ Multiply a matrix by a constant without caching anything
 
-        Note: 'pass' shadows a built-in of Python, therefore this is full 'passMatrix'
+        .. note:: 'pass' shadows a built-in of Python, therefore this is method is named 'passMatrix'
 
         :param scale: Scale factor on input matrix
         :return: The 'outMatrix' attribute as Nodex
@@ -733,11 +775,20 @@ class Matrix(Array):
         return Nodex(n.attr("matrixSum"))
 
     def __mul__(self, other):
-        """ Returns this matrix multiplied with another."""
+        """ Returns this matrix multiplied with another.
+
+        .. note:: This overrides the inherited behaviour from `Array` of multiplying all individual components with
+                  Matrix multiplication.
+
+        """
         return self.multiply(other)
 
 
 # class Quaternion(Array):
+#     """
+#         Some methods on the `Quaternion` datatype will try to quietly load the `matrixNodes` plug-in built-in with
+#         Maya to ensure the required nodes are available.
+#     """
 #     # TODO: Implement quaternion
 #     _plugins = ["quatNodes"]
 #

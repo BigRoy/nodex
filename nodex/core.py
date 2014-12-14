@@ -1,12 +1,10 @@
 # standard library
-import itertools
 from functools import partial
 import logging
 import abc
 logger = logging.getLogger(__name__)
 
 # maya library
-import maya.cmds as mc
 import pymel.core
 
 # local library

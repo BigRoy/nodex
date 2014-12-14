@@ -1,8 +1,6 @@
 import pymel.core as pm
 import maya.cmds as mc
 
-
-
 # region convenience methods rewiring attributes
 
 
@@ -198,7 +196,6 @@ def condition(firstTerm=None, secondTerm=None, ifTrue=None, ifFalse=None, output
     else:
         outputAttr = "{0}.{1}".format(n.name(), outputAttr)
     # endregion
-
 
     if firstTerm is not None:
         firstTerm.connect(n.attr("firstTerm"))
