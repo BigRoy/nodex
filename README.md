@@ -7,7 +7,7 @@ a lot of mathematical processing.
 
 Besides the description/documentation below a (currently experimental documentation) can be found at:
 
-- (colorbleed.nl/docs/nodex/master/)[colorbleed.nl/docs/nodex/master/]
+- [http://www.colorbleed.nl/docs/nodex/master/](http://www.colorbleed.nl/docs/nodex/master/)
 
 ## Node expressions for Maya
 
