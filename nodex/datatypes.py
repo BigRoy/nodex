@@ -525,14 +525,18 @@ class Matrix(Array):
     """
         Will you take the red or blue pill?
 
-        The Matrix datatype can be initialized by the Matrix datatypes in python api of Maya (both 1.0 and 2.0), the
-        Matrix in pymel.core.datatypes, a list/tuple of 16 elements, or a nested listed of 4x4. See the `isValidData`
-        staticmethod.
+        The Matrix datatype can be initialized by:
 
-        Unlike the Array datatype the Matrix can be initialized with a nested list/datatype, that is a Matrix.
+            - `maya.OpenMaya.MMatrix` and `maya.OpenMaya.MFloatMatrix`
+            - `maya.api.OpenMaya.MMatrix` and `maya.api.OpenMaya.MFloatmatrix`
+            - `pymel.core.datatypes.Matrix` and `pymel.core.datatypes.FloatMatrix`
+            - list/tuple of 16 elements ``[1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]``
+            - or a nested listed of 4x4. ``[[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]``
 
-        .. note:: Some methods on the Matrix datatype will try to quietly load the `matrixNodes` plug-in built-in with
-                  ensure the required nodes are available.
+        Unlike the `Array` datatype the Matrix can be initialized with a nested list/tuple (representing a 4x4 matrix).
+
+        .. note:: Some methods on the Matrix datatype will try to quietly load the `matrixNodes` plug-in (built-in with
+                  Maya) ensure the required nodes are available.
     """
     _plugins = ["matrixNodes"]
     _allowed_iterables = (tuple, list)
@@ -669,7 +673,7 @@ class Matrix(Array):
         return Nodex(composeNode.attr('outputMatrix'))
 
     def decompose(self, translate=None, rotate=None, scale=None, shear=None, quat=None, chainAttr="outputTranslate"):
-        """ Decomposes a Matrix into it's translate, rotate (euler and quat), scale, shear values.
+        """ Decomposes a Matrix into its translate, rotate (euler and quat), scale, shear values.
 
         :rtype: :class:`nodex.datatypes.Vector`
         """
@@ -695,7 +699,7 @@ class Matrix(Array):
     def passMatrix(self, scale=None):
         """ Multiply a matrix by a constant without caching anything
 
-        .. note:: 'pass' shadows a built-in of Python, therefore this is method is named 'passMatrix'
+        .. note:: 'pass' shadows a built-in of Python, therefore this method is named 'passMatrix'
 
         :param scale: Scale factor on input matrix
         :return: The 'outMatrix' attribute as Nodex
