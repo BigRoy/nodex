@@ -5,6 +5,7 @@ import pymel.core
 import maya.cmds as mc
 import time
 import logging
+import nodex.utils
 
 logger = logging.getLogger(__name__)
 
@@ -638,6 +639,15 @@ class TestExampleGraphs(unittest.TestCase):
         conditionOutput.connect('pSphere2.translate')
 
         print sphere2.getTranslation()
+
+class TestNodeHelper(unittest.TestCase):
+    def test_complex(self):
+
+        result = nodex.utils.nodeHelper("multiplyDivide", 'output',
+                                        inputs=(('input1', (1, 4)),
+                                                ('input2', (3, 5, 4))),
+                                        minimalOutput=True)
+        self.assertTrue(result.value().isEquivalent(pymel.core.datatypes.Vector(3.0, 20.0, 0.0)))
 
 if __name__ == '__main__':
     unittest.main()

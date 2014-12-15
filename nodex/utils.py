@@ -73,47 +73,105 @@ def plusMinusAverage(*args, **kwargs):
     return result
 
 
-def multiplyDivide(input1=None, input2=None, output=None, **kwargs):
+def multiplyDivide(input1=None, input2=None, **kwargs):
     from nodex.core import Nodex
 
-    # Ensure nodex inputs
-    if input1 is not None and not isinstance(input1, Nodex):
-        input1 = Nodex(input1)
-    if input2 is not None and not isinstance(input2, Nodex):
-        input2 = Nodex(input2)
-
     o = kwargs.pop("operation", 1)
-    name = kwargs.pop("name", "multiplyDivide")
+    setAttr = (('operation', o),)
+    inputs = (('input1', input1),
+              ('input2', input2))
 
-    n = pm.createNode("multiplyDivide", name=name)
-    n.operation.set(o)  # multiply, divide, pow, etc.
+    result = nodeHelper('multiplyDivide', 'output', inputs=inputs, setAttr=setAttr, **kwargs)
 
-    d = kwargs.pop("dimensions", None)
+    return result
 
-    # Get dimensions from input Nodex
-    if d is None:
-        d = max(x.dimensions() for x in [input1, input2, output] if not x is None)
+    # TODO: Old multiplyDivide implementation
+    # Ensure nodex inputs
+    # if input1 is not None and not isinstance(input1, Nodex):
+    #     input1 = Nodex(input1)
+    # if input2 is not None and not isinstance(input2, Nodex):
+    #     input2 = Nodex(input2)
+    #
+    # name = kwargs.pop("name", "multiplyDivide")
+    #
+    # n = pm.createNode("multiplyDivide", name=name)
+    # n.operation.set(o)  # multiply, divide, pow, etc.
+    #
+    # d = kwargs.pop("dimensions", None)
+    #
+    # # Get dimensions from input Nodex
+    # if d is None:
+    #     d = max(x.dimensions() for x in [input1, input2, output] if not x is None)
+    #
+    # if d > 3:
+    #     raise RuntimeError("Can't use multiplyDivide with higher dimensions than 3")
+    #
+    # # Attrs for dimensions
+    # input1Attrs = {1: "input1X", 2: ["input1X", "input1Y"], 3: "input1"}
+    # input1Attr = input1Attrs[d]
+    # input2Attrs = {1: "input2X", 2: ["input2X", "input2Y"], 3: "input2"}
+    # input2Attr = input2Attrs[d]
+    # outputAttrs = {1: "outputX", 2: ["outputX", "outputY"], 3: "output"}
+    # outputAttr = outputAttrs[d]
+    #
+    # for attr, inputValue in [(input1Attr, input1),
+    #                          (input2Attr, input2)]:
+    #     if inputValue is not None:
+    #         inputValue.connect(n.attr(attr))
+    #
+    # if output is not None:
+    #     Nodex(n.attr(outputAttr)).connect(output)
+    #
+    # return Nodex(n.attr(outputAttr))
 
-    if d > 3:
-        raise RuntimeError("Can't use plusMinusAverage with higher dimensions than 3")
 
-    # Attrs for dimensions
-    input1Attrs = {1: "input1X", 2: ["input1X", "input1Y"], 3: "input1"}
-    input1Attr = input1Attrs[d]
-    input2Attrs = {1: "input2X", 2: ["input2X", "input2Y"], 3: "input2"}
-    input2Attr = input2Attrs[d]
-    outputAttrs = {1: "outputX", 2: ["outputX", "outputY"], 3: "output"}
-    outputAttr = outputAttrs[d]
+def nodeHelper(nodeType, chainAttr, inputs=(), outputs=(), minimalOutput=True, setAttr=(), **kwargs):
+    from nodex.core import Nodex
 
-    for attr, inputValue in [(input1Attr, input1),
-                             (input2Attr, input2)]:
-        if inputValue is not None:
-            inputValue.connect(n.attr(attr))
+    # ensure nodex
+    inputs = tuple((attrName, attrValue) if isinstance(attrValue, Nodex) else (attrName, Nodex(attrValue))
+               for attrName, attrValue in inputs if attrValue is not None)
 
-    if output is not None:
-        Nodex(n.attr(outputAttr)).connect(output)
+    outputs = tuple((attrName, attrValue) if isinstance(attrValue, Nodex) else (attrName, Nodex(attrValue))
+               for attrName, attrValue in outputs if attrValue is not None)
 
-    return Nodex(n.attr(outputAttr))
+    # highest dimensions among inputs
+    dim = max(y.dimensions() for x, y in inputs)
+
+    # create node
+    createKwargs = {}
+    name = kwargs.pop('name', None)
+    if name:
+        createKwargs['name'] = name
+
+    n = pm.createNode(nodeType, **createKwargs)
+
+    for attrName, attrValue in setAttr:
+        n.attr(attrName).set(attrValue)     # without nodex (optimization for static values)
+
+    # check input dimensions
+    for attrName, attrValue in inputs:
+        attrNodex = Nodex(n.attr(attrName))
+        if dim < attrNodex.dimensions():
+            if dim == 1:
+                attrNodex = attrNodex[0]
+            else:
+                attrNodex = attrNodex[:dim]
+        attrValue.connect(attrNodex)
+
+    # result chain
+    result = Nodex(n.attr(chainAttr))
+
+    # if dimensions mismatch give resulting dimensions lowest dimensions (if minimalOutput)
+    if minimalOutput and dim != 0:
+        if result.dimensions() > dim:
+            if dim == 1:
+                result = result[0]
+            else:
+                result = result[:dim]
+
+    return result
+
 
 
 def clamp(input=None, min=None, max=None, output=None, **kwargs):

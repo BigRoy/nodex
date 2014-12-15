@@ -364,11 +364,6 @@ class Vector(Array):
 
         return False
 
-    def dimensions(self):
-        # The dimensions of a Matrix should always be 16, so we assume it for now
-        # If one wants a 3x3 Matrix implementation one needs to define a new datatype.
-        return 3
-
     def convertData(self, data):
         # region attribute
         if isinstance(data, pymel.core.Attribute):
@@ -393,6 +388,11 @@ class Vector(Array):
 
         return super(Vector, self).convertData(data)
         # endregion
+
+    def dimensions(self):
+        # The dimensions of a Matrix should always be 16, so we assume it for now
+        # If one wants a 3x3 Matrix implementation one needs to define a new datatype.
+        return 3
 
     def value(self):
         v = super(Vector, self).value()
@@ -606,11 +606,6 @@ class Matrix(Array):
 
         return False
 
-    def dimensions(self):
-        # The dimensions of a Matrix should always be 16, so we assume it for now
-        # If one wants a 3x3 Matrix implementation one needs to define a new datatype.
-        return 16
-
     def convertData(self, data):
         # Convert the data to a matrix type
         # If the data refers to a Matrix attribute we store the reference directly.
@@ -647,6 +642,11 @@ class Matrix(Array):
 
         return super(Matrix, self).convertData(data)
         # endregion
+
+    def dimensions(self):
+        # The dimensions of a Matrix should always be 16, so we assume it for now
+        # If one wants a 3x3 Matrix implementation one needs to define a new datatype.
+        return 16
 
     def value(self):
         v = super(Matrix, self).value()
