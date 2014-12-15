@@ -5,22 +5,24 @@ node connections in Maya through Python scripting. The ease of access and method
 will help to write readable and maintainable code for node based graphs that require
 a lot of mathematical processing.
 
-Besides the description/documentation below a (currently experimental) documentation can be found at:
+
+# Documentation
+
+### Full documentation for Nodex:
 
 - [http://www.colorbleed.nl/docs/nodex/master/](http://www.colorbleed.nl/docs/nodex/master/)
 
+# Brief docs
+
 ## Node expressions for Maya
+
+The core concept of the Nodex is that each node in the graph can have multiple inputs, but has a
+single important output. This way the algorithm can be written as a single line of chained commands.
 
 The process works by using an object called the ``Nodex``.
 
-Upon initializing a Nodex you reference a value, which is one of three values:
-
-1. Operates on output *attributes* so it can quickly connect it to another Nodex, `(pymel.Attribute)`
-2. Or references a *value* so that it can easily assign it into another Nodex. `(float, int, bool)`
-3. Or references an array of *values* and/or *attributes*. `(tuple)`
-
-Since the Nodex has a magic initialization (factory within __new__) it will become the relevant datatype for the data
-you're referencing.
+Upon initializing a Nodex you reference a value (its first argument). Since the Nodex has a magic initialization 
+(factory within __new__) it will become the relevant datatype for the data you're referencing.
 
 Then you can perform mathematical operations upon this Nodex with another
 Nodex (thus other attributes/numbers) and it will automatically return a Nodex that references
@@ -31,10 +33,11 @@ Performable operations include mathematical operators that act directly on the N
 - +, -, /, *, ^ for addition, subtraction, division, multiplication and power.
 - ==, !=, >, >=, <, <= that will result in a 'condition' node.
 
-The core concept of the Nodex is that each node in the graph can have multiple inputs, but has a
-single important output. This way the algorithm can be written as a single line of chained commands.
-Yet there's no boundary on what arguments one of the Nodex' staticmethods have so those could also
+Yet there's no boundary on what arguments one of the Nodex' inherited methods have so those could also
 include easing the workflow for much more complex operations than those already provided.
+
+That's why you'll also see (among others) **dot-product** and **cross-product** implementations work when dealing with
+Vectors.
 
 ## Features
 
@@ -65,16 +68,8 @@ a Vector where each component has the scalar added like this:
     float + vector        = vector + vector                   = vector output
     0.5 + [0.3, -1, 10.1] = [0.5, 0.5, 0.5] + [0.3, -1, 10.1] = [0.8, -0.5, 10.6]
 
-*Since 0.2 allowing to grow to bigger dimensions has been disabled by default; the expected behavior is still up for
-discussion*
 
-*This note might not be relevant anymore since 0.2*
-Note: For all methods on Nodex the type of the output is based on the inputs, thus it will never 'adapt'
-to the type of output attribute that you're trying to connect to if directly connected with one of
-its staticmethods. An **EXCEPTION** is the Nodex().connectTo() method will try to adapt when possible!
-
-
-##    Code Samples
+## Code Samples
 
 Multiply two attributes and connect the output value
 

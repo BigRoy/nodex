@@ -79,3 +79,37 @@ If you check the type of the Nodex you'll see it's actually a ``nodex.datatypes.
     n = Nodex([0, 0, 0]]
     print type(n)
 
+
+Features
+========
+
+Returns the smallest calculated resulting attribute
+---------------------------------------------------
+
+The Nodex will try to minimize the result/output based on the inputs. This means that when
+you add two integers it will give you the output attribute (as Nodex) for a single float
+attribute (output1D). But if you add two vectors together it will return the output3D from the
+used plusMinusAverage node.
+
+.. note:: This is of course only a valid statement for where this conversion is possible with the given
+          Maya graph nodes.
+
+
+Chain, chainery, chain-chain-cheroo
+-----------------------------------
+
+Since the output of each calculation with Nodex instances returns a new Nodex wrapping the calculation's output
+attribute you can write a chain of calculations. Of course you're free to stop take the resulting node midway, store
+it in a variable and use it's output for a multitude of node trees.
+
+Smart set/connect for attributes
+--------------------------------
+
+Using an input value or attribute it will try to guess how to connect it to the input attributes
+for a mathemical node based on the smaller input element (in dimensions) similar to above.
+This means adding together a float attribute with a vector attribute will actually result in
+a Vector where each component has the scalar added like this:
+
+| float + vector        = vector + vector                   = vector output
+| 0.5 + [0.3, -1, 10.1] = [0.5, 0.5, 0.5] + [0.3, -1, 10.1] = [0.8, -0.5, 10.6]
+|

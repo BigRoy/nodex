@@ -1,6 +1,6 @@
 """
     The datatypes supported by the Nodex factory are defined by subclasses of the Nodex that validate the data
-    and oonvert the input data when required.
+    and convert the input data when required.
 
     By looking at the datatype documentation you're able to have a look at what methods/functionality they provide.
 """
