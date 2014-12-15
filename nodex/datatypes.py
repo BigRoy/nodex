@@ -29,7 +29,6 @@ from core import Nodex, Math
 class Numerical(Nodex):
     """ The Numerical datatype is the base class for all single numerical values (eg. `Float`, `Integer`, `Boolean`).
 
-
         .. note:: Currently this is also the class that will be instantiated when reference an attribute of a single
                   numerical value (since Float/Integer/Boolean haven't been implemented like that as of yet).
                   Nevertheless all those classes should behave as expected.
@@ -101,21 +100,27 @@ class Numerical(Nodex):
 
     # region special methods override: mathematical operators
     def __add__(self, other):
+        """ (+ operator) Add to the other `Nodex` using + """
         return Math.bimath(self, other, func=Math.sum)
 
     def __sub__(self, other):
+        """ Subtract the other `Nodex` from this instance using - """
         return Math.bimath(self, other, func=Math.subtract)
 
     def __mul__(self, other):
+        """ Multiply the other `Nodex` with this instance using * """
         return Math.bimath(self, other, func=Math.multiply)
 
     def __xor__(self, other):
+        """ Square this instance by other `Nodex` using ^ """
         return Math.bimath(self, other, func=Math.power)
 
     def __pow__(self, other):
+        """ Square this instance by other `Nodex` using pow() """
         return Math.bimath(self, other, func=Math.power)
 
     def __div__(self, other):
+        """ Divide this instance by other `Nodex` using / """
         return Math.bimath(self, other, func=Math.divide)
     #endregion
 
@@ -152,7 +157,6 @@ class Numerical(Nodex):
             :rtype: :class:`nodex.datatypes.Float`
         """
         return Math.greaterOrEqual(self, 0.0)
-
     # endregion
 
 
@@ -463,7 +467,9 @@ class Vector(Array):
         """ Returns the cross product of this and another `Vector`.
 
         :param other: The other vector
+        :type other: :class:`nodex.datatypes.Vector`
         :param normalizeOutput: If True normalizes the output Vector.
+        :type normalizeOutput: :class:`nodex.datatypes.Float`
         :return: The cross product
         :rtype: :class:`nodex.datatypes.Vector`
         """
@@ -473,7 +479,9 @@ class Vector(Array):
         """ Returns the dot product of this and another `Vector`.
 
         :param other: The other vector
+        :type other: :class:`nodex.datatypes.Vector`
         :param normalizeOutput: If True normalizes the output Vector.
+        :type normalizeOutput: :class:`nodex.datatypes.Float`
         :return: The dot product
         :rtype: :class:`nodex.datatypes.Vector`
         """
@@ -482,7 +490,7 @@ class Vector(Array):
         return Nodex(output.node().attr('outputX'))
 
     def length(self):
-        """ Returns the magnitude of the vector
+        """ Returns the magnitude of the vector.
 
             :rtype: :class:`nodex.datatypes.Float`"""
         output = self._distanceBetween(self, point2=(0, 0, 0), name="vectorLength")
@@ -490,9 +498,9 @@ class Vector(Array):
         return output
 
     def squareLength(self):
-        """ Returns the square length of the vector
+        """ Returns the square length of this `Vector`.
 
-            :rtype: :class:`Float`"""
+            :rtype: :class:`nodex.datatypes.Float`"""
         v = self ^ [2.0, 2.0, 2.0]          # square all components
         v = Math.sum1D(v[0], v[1], v[2])    # sum all components
         return v
@@ -512,7 +520,7 @@ class Vector(Array):
         return self._angleBetween(self, other, angle=angle, axis=axis, euler=euler, chainAttr=chainAttr)
 
     def normal(self):
-        """ Return the normalized `Vector` of this one.
+        """ Return the normalized `Vector`.
 
             :rtype: :class:`nodex.datatypes.Vector`
         """

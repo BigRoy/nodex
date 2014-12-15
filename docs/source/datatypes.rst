@@ -7,6 +7,8 @@ Datatypes
 .. toctree::
    :maxdepth: 2
 
+   core/nodex
+   core/math
    datatypes/numerical
    datatypes/float
    datatypes/integer

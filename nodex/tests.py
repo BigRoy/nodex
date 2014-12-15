@@ -7,7 +7,7 @@ import time
 import logging
 import nodex.utils
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('nodex.tests')
 
 
 class speedMeasure(object):
@@ -35,25 +35,25 @@ class TestNodexSpeed(unittest.TestCase):
         """ This is a good test since each element within the Array gets converted to a single Nodex() element.
             So it calls the Nodex __new__ method many times.
         """
-        with speedMeasure(0.3, msg="array: list multiplied"):
+        with speedMeasure(0.4, msg="array: list multiplied"):
             Nodex([1]*10000)
 
-        with speedMeasure(0.3, msg="array: range"):
+        with speedMeasure(0.4, msg="array: range"):
             Nodex(range(10000))
 
     def test_many_matrices(self):
 
         l = [0]*16
-        with speedMeasure(0.06, msg="init matrices"):
+        with speedMeasure(0.08, msg="init matrices"):
             for x in range(250):
                 m = Nodex(l)
 
-        with speedMeasure(0.25, msg="init matrices & getting values"):
+        with speedMeasure(0.30, msg="init matrices & getting values"):
             for x in range(50):
                 m = Nodex(l)
                 m.value()
 
-        with speedMeasure(0.06, msg="init matrices explicit"):
+        with speedMeasure(0.08, msg="init matrices explicit"):
             for x in range(250):
                 m = nodex.datatypes.Matrix(l)
 

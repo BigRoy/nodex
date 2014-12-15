@@ -154,14 +154,21 @@ class Nodex(object):
         """ Returns the attribute this Nodex instance is referencing.
             If not referencing an attribute an error is raised
 
-            :rtype: pymel.core.Attribute or tuple
+            :rtype: pymel.core.Attribute or tuple(pymel.core.Attribute)
         """
         if self.isAttribute():
             return self._data
         else:
-            return None
+            raise AttributeError("Data referenced by this nodex is not a `pymel.core.Attribute`")
 
     def isSingleAttribute(self):
+        """ Returns True if this instance references a single valid attribute.
+
+            If this returns True then the output of self.attr() is accesible `pymel.core.Attribute`)
+
+            If this returns False but `isAttribute()` is True, then the output of self.attr() is a tuple of
+            `pymel.core.Attribute`
+        """
         if isinstance(self._data, pymel.core.Attribute):
             return True
 
@@ -186,7 +193,7 @@ class Nodex(object):
     # endregion
 
     def clearValue(self):
-        """ Set the default value for this Nodex instance (reset value) """
+        """ Set the default value for this instance (reset value). """
         defaultValue = self.default()
         if defaultValue is None:
             raise RuntimeError("Can't clear the value for: {0}".format(self))
@@ -254,6 +261,11 @@ class Nodex(object):
     # endregion
 
     def __getitem__(self, item):
+        """ Retrieve an item or slice of this Nodex.
+
+            You can use this to access part of a datatype that has more than 1 dimension.
+            It also directly allows you to access children attributes of a compound/array attribute.
+        """
         if self.isSingleAttribute():
             attr = self.attr()
             if attr.isArray():
@@ -286,21 +298,30 @@ class Nodex(object):
 
     # region override right hand operators
     def __radd__(self, other):
+        """ Gereneric implementation for right hand + operator """
         return Nodex(other) + self
 
     def __rsub__(self, other):
+        """ Gereneric implementation for right hand - operator """
         return Nodex(other) - self
 
     def __rmul__(self, other):
+        """ Gereneric implementation for right hand * operator """
         return Nodex(other) * self
 
     def __rdiv__(self, other):
+        """ Gereneric implementation for right hand / operator """
         return Nodex(other) / self
 
     # def __rmod__(self, other):
     #     return Nodex(other) % self
 
     def __rpow__(self, other):
+        """ Gereneric implementation for right hand pow() operator """
+        return Nodex(other ^ self)
+
+    def __rxor__(self, other):
+        """ Gereneric implementation for right hand ^ operator """
         return Nodex(other ^ self)
     # endregion
 
@@ -352,23 +373,88 @@ class Math(object):
     lessOrEqual = partial(nodex.utils.condition, operation=5, name="lessOrEqual")
 
     @staticmethod
+    def sqrt(nodex, name='sqrt'):
+        """ Return the square root of the given nodex """
+        sqrt_result = Math.power(nodex, 0.5, name=name)
+        sqrt_result.node().attr("input2").lock()    # lock this attribute to be safe
+        return sqrt_result
+
+    @staticmethod
     def abs(nodex, name="abs", dimensions=None):
+        """ Return the absolute value of the given nodex """
         pow_result = Math.power(nodex, 2.0, name="{0}_pow".format(name))
         pow_result.node().attr("input2").lock()     # lock this attribute to be safe
         sqrt_result = Math.power(pow_result, 0.5, name="{0}_sqrt".format(name))
         sqrt_result.node().attr("input2").lock()    # lock this attribute to be safe
         return sqrt_result
 
+    @staticmethod
+    def blend(input1, input2, blender=None, name='blend'):
+        """ Returns the blended values
 
-# TODO: Implement Math methods (not necessarily in order of importance)
-# TODO: Math.blend (=blendColors)
-# TODO: Math.setRange
-# TODO: Math.contrast
+            Uses `blendColors` node.
+
+            .. warning:: Not implemented yet.
+        """
+        # TODO: Implement Math.blend
+        raise NotImplementedError()
+
+    @staticmethod
+    def setRange(value, min, max=None, oldMin=None, oldMax=None, name='setRange'):
+        """ Returns the blended values
+
+            Uses `setRange` node.
+
+            .. warning:: Not implemented yet.
+        """
+        # TODO: Implement Math.blend
+        raise NotImplementedError()
+
+    @staticmethod
+    def lookupTable(fn, minInput, maxInput, steps=200):
+        """ Returns the output of an animCurve node where the curve has been set to the provided function calculated
+            at `steps` amount between minInput and maxInput.
+
+            This could be used to implement non-default algorithms/nodes into Maya; especially those with a repetitive
+            pattern like sin/cos/tan.
+
+            .. warning:: Not implemented yet.
+
+        """
+        # TODO: Implement Math.lookupTable
+        raise NotImplementedError()
+
+    @staticmethod
+    def overlay(input1, input2):
+        """
+            Implementation of overlay
+
+            Source: http://en.wikipedia.org/wiki/Blend_modes#Overlay
+        """
+        # TODO: Test overlay implementation
+        # TODO: Rewrite overlay implementation so node names are more relevant
+        a = Nodex(input1)
+        b = Nodex(input2)
+        fn1 = 2*a*b
+        fn2 = 1 - 2 * (1-a) * (1-b)
+        overlay = Math.lessThan(a, 0.5, ifTrue=fn1, ifFalse=fn2)
+        return overlay
+
+    @staticmethod
+    def contrast(value, contrast=None, bias=None):
+        """ Returns the value modified by contrast from bias.
+
+            Uses `contrast` node.
+
+            .. warning:: Not implemented yet.
+
+        """
+        # TODO: Implement Math.contrast
+        raise NotImplementedError()
+
+
 # TODO: Math.reverse
 # TODO: Math.stencil
-# TODO: Math.overlay (= multiple nodes)
-# TODO: Math.vectorProduct
-# TODO: Math.angleBetween
 # TODO: Math.unitConversion
 
 
