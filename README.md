@@ -5,6 +5,7 @@ node connections in Maya through Python scripting. The ease of access and method
 will help to write readable and maintainable code for node based graphs that require
 a lot of mathematical processing.
 
+![Nodex Logo](static/images/nodex_logo_256.png)
 
 # Documentation
 
