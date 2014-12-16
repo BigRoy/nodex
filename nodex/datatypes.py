@@ -796,13 +796,92 @@ class Matrix(Array):
         return self.multiply(other)
 
 
+# TODO: Implement quaternion
 # class Quaternion(Array):
 #     """
 #         Some methods on the `Quaternion` datatype will try to quietly load the `matrixNodes` plug-in built-in with
 #         Maya to ensure the required nodes are available.
 #     """
-#     # TODO: Implement quaternion
 #     _plugins = ["quatNodes"]
+#     _allowed_iterables = (tuple, list)
 #
 #     _priority = 90
-#     pass
+#
+#     @staticmethod
+#     def validateAttr(attr):
+#         if attr.isArray() or attr.isCompound():
+#             if nodex.utils.attrDimensions(attr) == 4:
+#                 return True
+#         return False
+#
+#
+#     @staticmethod
+#     def isValidData(data):
+#
+#         if isinstance(data, pymel.core.Attribute):
+#             return Quaternion.validateAttr(data)
+#         elif isinstance(data, basestring):
+#             try:
+#                 attr = pymel.core.Attribute(data)
+#                 return Quaternion.validateAttr(attr)
+#             except RuntimeError:
+#                 return False
+#
+#         if isinstance(data, Quaternion._allowed_iterables) and len(data) == 4:
+#             return True
+#
+#     def convertData(self, data):
+#
+#         # attribute
+#         if isinstance(data, pymel.core.Attribute):
+#             return data
+#         elif isinstance(data, basestring):
+#             return pymel.core.Attribute(data)
+#
+#         # handle like Array
+#         return super(Quaternion, self).convertData(data)
+#
+#     @staticmethod
+#     def fromEuler(rotate=None, rotateOrder=None):
+#         """
+#             Uses `eulerToQuat` node
+#
+#         :param rotate: :class:`nodex.datatypes.Vector`
+#         :param rotateOrder: :class:`nodex.datatypes.Int` (enum)
+#         :return: :class:`nodex.datatypes.Quaternion`
+#         """
+#         raise NotImplementedError()
+#
+#     def toEuler(self):
+#         raise NotImplementedError()
+#
+#     def inverse(self):
+#         raise NotImplementedError()
+#
+#     def negate(self):
+#         raise NotImplementedError()
+#
+#     def normalize(self):
+#         raise NotImplementedError()
+#
+#     def add(self, other):
+#         raise NotImplementedError()
+#
+#     def sub(self, other):
+#         raise NotImplementedError()
+#
+#     def product(self, other):
+#         raise NotImplementedError()
+#
+#     def slerp(self, other, blender=None):
+#         """
+#             There doesn't seem to be a slerp node in Maya so we'll need to implement it with a set of nodes.
+#             Maybe: http://download.autodesk.com/us/maya/2011help/Nodes/animBlendNodeAdditiveRotation.html
+#
+#
+#         :param other:
+#         :param blender:
+#         :return:
+#         """
+#         raise NotImplementedError()
+
